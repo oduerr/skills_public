@@ -45,26 +45,14 @@ scripts/
 README.md
 ```
 
-
-
-## Adding a skill
-
-1. Create a new directory under `skills/your_skill_name/`  
-2. Add a `SKILL.md` with a YAML frontmatter block:
-
-```markdown
----
-name: your_skill_name
-description: "When to trigger this skill and what it produces."
----
-
-# Your Skill
-
-Instructions for the agent...
+## Adding external skills
+External skills (Anthropic and others) Some useful skills come from external repos and cannot be redistributed here due to their license. 
+To install them locally, run:
+```bash
+bash scripts/fetch_external_skills.sh
 ```
-
-3. Run `bash scripts/link_skills.sh` again to link the new skill.
-
-## Contributing
-
-Pull requests welcome! Please make sure each skill has a clear `description` in the frontmatter — this is what agents use to decide when to invoke the skill.
+This downloads skills from trusted sources (currently anthropics/skills) into ~/.agents/skills/. Then run:
+```bash
+bash scripts/link_external_skills.sh
+```
+This symlinks the external skills into all agent folders alongside your own skills.
