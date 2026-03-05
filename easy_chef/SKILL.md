@@ -1,6 +1,6 @@
 ---
 name: easy_chef
-description: "Use whenever Oliver shares a recipe or asks to simplify, reformat, or explain a dish — even if he just pastes ingredients or mentions a dish name. Produces structured output with emoji-numbered ingredient cross-references, metric units, step-grouped ingredient lists, and a Samin Nosrat culinary critique."
+description: "Use whenever the user shares a recipe or asks to simplify, reformat, or explain a dish — even if they just paste ingredients or mention a dish name. Produces structured output with emoji-numbered ingredient cross-references, mise en place notes, metric units, step-grouped ingredient lists, and a Samin Nosrat culinary critique"
 ---
 
 # Easy Chef
@@ -19,18 +19,20 @@ Total prep and cook time.
 Number of people the recipe feeds.
 
 ### Ingredients
-Number each ingredient sequentially and assign an emoji. Group by cooking step using bold headings. Order items as they appear in the instructions. Add metric units if missing; add Celsius if only Fahrenheit is given.
+Number each ingredient sequentially and assign an emoji. Place the emoji directly at the start of the ingredient name (not in a separate field). Group by cooking step using bold headings. Order items as they appear in the instructions. Add metric units if missing; add Celsius if only Fahrenheit is given.
 
-Format: `(emoji #N) Name: amount (imperial equivalent if added), any prep note`
+Each ingredient must include a **mise en place note** — how it should be prepared and ready before cooking starts (e.g. washed and dried, finely chopped, measured out, peeled and ready to press). This lets the cook prepare everything in advance.
+
+Format: `(emoji #N) Name — mise en place note: amount`
 
 Example:
 ```
 **Blanch:**
-* (🍖 #1) Pork belly: 1200 g (about 1.3 lb), cut into 2-3 cm chunks
-* (💧 #2) Cold water: enough to cover pork belly
+* (🍖 #1) Pork belly — cut into 2–3 cm chunks: 1200 g (about 1.3 lb)
+* (💧 #2) Cold water — in a large pot ready to boil: enough to cover pork
 
 **Braise:**
-* (🍷 #3) Shaoxing rice wine: 500 ml (about 2 cups)
+* (🍷 #3) Shaoxing rice wine — measured out: 500 ml (about 2 cups)
 ```
 
 ### Instructions
