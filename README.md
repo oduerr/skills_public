@@ -1,4 +1,4 @@
-# skills
+# skills_public
 
 A collection of reusable AI agent skills for Claude and other LLM-powered CLIs.
 
@@ -15,8 +15,8 @@ Skills are self-contained directories with a `SKILL.md` that tells the agent wha
 Clone the repo and run the install script to symlink all skills into the global skill folders for supported agents:
 
 ```bash
-git clone https://github.com/oduerr/skills.git
-cd skills
+git clone https://github.com/oduerr/skills_public.git
+cd skills_public
 bash scripts/link_skills.sh
 ```
 
@@ -37,12 +37,13 @@ Symlinks mean updates via `git pull` are picked up automatically — no reinstal
 ## Repo structure
 
 ```
-skills/                  ← each skill is a subdirectory here
-  easy_chef/
-    SKILL.md
-scripts/
-  link_skills.sh         ← install script
-README.md
+skills_public/           ← repo root (clone target)
+  skills/                ← each skill is a subdirectory here
+    easy_chef/
+      SKILL.md
+  scripts/
+    link_skills.sh       ← install script
+  README.md
 ```
 
 ## Adding external skills
