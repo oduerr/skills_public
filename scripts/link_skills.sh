@@ -10,13 +10,14 @@ if [ ! -d "$REPO_SKILLS_DIR" ]; then
   exit 1
 fi
 
+# .agents/skills will be written by gemini cli, we don't need to link it here
 GLOBAL_TARGETS=(
   "$HOME/.agents/skills"
   "$HOME/.claude/skills"
-  "$HOME/.codex/skills"
-  "$HOME/.gemini/skills"
-  "$HOME/.openclaw/skills"
-  "$HOME/.config/opencode/skills"
+  # "$HOME/.codex/skills"
+  # "$HOME/.gemini/skills"
+  # "$HOME/.openclaw/skills"
+  # "$HOME/.config/opencode/skills"
 )
 
 mkdir -p "${GLOBAL_TARGETS[@]}"
