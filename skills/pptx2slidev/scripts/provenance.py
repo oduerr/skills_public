@@ -13,7 +13,8 @@ Table format (see references/provenance.md):
 rights is one of: free, own, unclear.
 Problems reported:
   - image without table row or without comment
-  - rights "unclear" (or missing) for a file outside the internal folder (--intern-dir):
+  - rights "unclear" (or missing) for a file outside the internal folder (--intern-dir,
+    default _intern; subfolders per deck such as _intern/<deck>/ count as inside):
     unclear counts as NOT free, so it must not go into a public version
   - license that needs attribution (CC BY*) with an empty "credit on slide"
 Exit code 1 if there are problems.

@@ -9,7 +9,7 @@ Lecture slides collect images from many places over the years: own plots, book c
    <img src="/03_wkeit/elephant.jpg" class="h-72 mx-auto">
    <!-- provenance: elephant.jpg | 03_wkeit.pptx slide 11 (media s11_7.jpg) | Steve Jurvetson, "The elephant in the room", Wikimedia Commons | free | CC BY 2.0 -->
    ```
-2. **Table** `PROVENANCE.md` in the image folder (`public/<deck>/PROVENANCE.md`, and `public/<intern-dir>/PROVENANCE.md` for internal images), so scripts can read it (e.g. a public export that leaves out images that are not free):
+2. **Table** `PROVENANCE.md` in the image folder (`public/<deck>/PROVENANCE.md`, and `public/_intern/<deck>/PROVENANCE.md` for internal images), so scripts can read it (e.g. a public export that leaves out images that are not free):
    ```markdown
    | file | from | origin | rights | license | credit on slide |
    |---|---|---|---|---|---|
@@ -32,7 +32,7 @@ Lecture slides collect images from many places over the years: own plots, book c
 
 ## Rules
 
-- **Unclear counts as not free.** Put such images into the internal folder (default `public/_intern/`), which a public version leaves out. Do not guess a license to make an image "free".
+- **Unclear counts as not free.** Put such images into the internal folder of the deck (default `public/_intern/<deck>/`), which a public version leaves out. Do not guess a license to make an image "free".
 - **Attribution:** a CC BY image needs a visible credit on the slide (author, title or source, license). Keep the original credit line or add one as the slide's single source line.
 - **Crops** of the reference page inherit the rights of what is in them: a crop of an own diagram is `own`, a crop that contains a photo is that photo's rights.
 - **Do not search the web** for licenses unless the user asks. Record what the slide and notes say, and list the unclear images in the final report so the author can decide.

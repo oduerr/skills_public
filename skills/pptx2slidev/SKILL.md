@@ -20,7 +20,7 @@ Collect these from the request, the project (README, CLAUDE.md, existing decks, 
    - `thorough`: loop up to 10 rounds.
    The user may also give a number ("up to 7 rounds").
 5. **Agents**: the user says how many ("use four agents, one per deck"). If not said and there is more than one deck, ask. Split by deck, not by slide range: one agent who owns a whole deck keeps it consistent. One deck = do it yourself or with one agent.
-6. **Image folders**: where deck images go (`public/<deck>/`) and the internal folder for images with unclear rights (default `public/_intern/`).
+6. **Image folders**: where deck images go (`public/<deck>/`) and the internal folder for images with unclear rights (default `public/_intern/<deck>/`, one subfolder per deck, so it stays clear which deck an internal image belongs to).
 
 ## Phase 1: extract and check the reference
 

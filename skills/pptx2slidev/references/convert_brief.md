@@ -2,7 +2,7 @@
 
 You convert one deck (or a given slide range) into a Slidev Markdown file. The author will teach from it, so the content must stay exactly as it is, and the slides must look like a clean version of the original.
 
-Fill in before handing this to an agent: `<WORK>` (work folder), `<DECK_MD>` (target file), `<IMG_DIR>` (e.g. `public/<deck>/`), `<INTERN_DIR>`, `<STYLE>` (what the project's style decisions are: theme, fonts, base size, existing CSS helpers or "default theme, no custom CSS"), `<LANG>`.
+Fill in before handing this to an agent: `<WORK>` (work folder), `<DECK_MD>` (target file), `<IMG_DIR>` (e.g. `public/<deck>/`), `<INTERN_DIR>` (e.g. `public/_intern/<deck>/`), `<STYLE>` (what the project's style decisions are: theme, fonts, base size, existing CSS helpers or "default theme, no custom CSS"), `<LANG>`.
 
 ## Inputs
 - `<WORK>/dump.md`: per visible slide: shapes with position (% of slide), text, tables, images, notes, links, animations, and a `raw text:` line with all text in the slide XML.
@@ -19,7 +19,7 @@ Fill in before handing this to an agent: `<WORK>` (work folder), `<DECK_MD>` (ta
 4. **No absolute positioning** (`absolute`, `top-[..]`, `left-[..]`, fixed px boxes), except one source or credit line per slide. Why: absolute boxes do not move with the content; when text or fonts change, they drift over other content, and every later fix gets harder. If you think a slide really needs it, do it and list it in your report.
 5. **No custom grid divs or new CSS classes** unless `<STYLE>` provides them. Built-in layouts are understood by every later editor and agent.
 6. Things that are not usable as an image file (WMF/EMF, charts, SmartArt, arrows or labels over pictures, rotated text): crop the region from `ref_hi/p-NN.png` with Pillow, using the % position from dump.md. Check the crop edges (do not cut a text line in half). RGBA/TIFF: composite onto white before saving as PNG. If a slide is mostly graphics, cropping the whole content area below the title is fine; prefer real text where it is reasonable.
-7. Copy only the images you use into `<IMG_DIR>`. For each image add provenance (comment next to it AND a row in `<IMG_DIR>/PROVENANCE.md`) following `references/provenance.md`. Images with rights `unclear` go to `<INTERN_DIR>`.
+7. Copy only the images you use into `<IMG_DIR>`. For each image add provenance (comment next to it AND a row in `<IMG_DIR>/PROVENANCE.md`) following `references/provenance.md`. Images with rights `unclear` go to `<INTERN_DIR>`, with their row in `<INTERN_DIR>/PROVENANCE.md`.
 8. Animations: `v-click` only where it clearly helps (quiz answers, step-by-step reveals).
 9. Speaker notes: keep them verbatim as an HTML comment at the end of the slide.
 10. Skip slide-number boxes and footer boilerplate. Videos: placeholder line `*(Video: <name>)*` unless told otherwise.
