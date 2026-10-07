@@ -12,16 +12,17 @@ Converting slides is easy; converting them so the author can teach from them wit
 Collect these from the request, the project (README, CLAUDE.md, existing decks, `style.css`), or ask the user in one short message. Do not start converting until they are clear.
 
 1. **Source and target**: which .pptx files, which Slidev project and file names.
-2. **Style**: theme, fonts, base size, existing CSS helpers or layouts in the project. Decide this FIRST — changing fonts or base size after the layout rounds causes new overflows everywhere. Default when the project has nothing: default theme, built-in layouts, no custom CSS.
-3. **Reference PDF** (see below).
-4. **Effort**, set by the user, default `normal`:
+2. **Aspect ratio**: compare the .pptx (dump.md header: ratio 1.333 = 4:3, 1.778 = 16:9) with the projector and the project's other decks. Converting 4:3 into 16:9 changes every slide: about a quarter less height, so content must shrink or reflow, which drives most layout rounds. Keeping 4:3 converts almost 1:1 but leaves side bars on a wide projector. Ask the user if the project does not say; record the choice in the project settings.
+3. **Style**: theme, fonts, base size, existing CSS helpers or layouts in the project. Decide this FIRST — changing fonts or base size after the layout rounds causes new overflows everywhere. Default when the project has nothing: default theme, built-in layouts, no custom CSS.
+4. **Reference PDF** (see below).
+5. **Effort**, set by the user, default `normal`:
    - `quick`: one conversion pass and one check round, report the rest.
    - `normal`: loop up to 5 rounds.
    - `thorough`: loop up to 10 rounds.
    The user may also give a number ("up to 7 rounds").
-5. **Agents**: the user says how many ("use four agents, one per deck"). If not said and there is more than one deck, ask. Split by deck, not by slide range: one agent who owns a whole deck keeps it consistent. One deck = do it yourself or with one agent.
-6. **Project settings**: look for a section "Slidev conversion" in the project README (or CLAUDE.md). It records what the next run needs: style, the `--ignore` selectors for decorative layouts in the overflow checker (e.g. `--ignore=.htwg-cover`), image folders, where reference PDFs live. If it is missing, write it at the end of the run (Phase 4), so the next run does not rediscover it.
-7. **Image folders**: where deck images go (`public/<deck>/`) and the internal folder for images with unclear rights (default `public/_intern/<deck>/`, one subfolder per deck, so it stays clear which deck an internal image belongs to).
+6. **Agents**: the user says how many ("use four agents, one per deck"). If not said and there is more than one deck, ask. Split by deck, not by slide range: one agent who owns a whole deck keeps it consistent. One deck = do it yourself or with one agent.
+7. **Project settings**: look for a section "Slidev conversion" in the project README (or CLAUDE.md). It records what the next run needs: style, the `--ignore` selectors for decorative layouts in the overflow checker (e.g. `--ignore=.htwg-cover`), image folders, where reference PDFs live. If it is missing, write it at the end of the run (Phase 4), so the next run does not rediscover it.
+8. **Image folders**: where deck images go (`public/<deck>/`) and the internal folder for images with unclear rights (default `public/_intern/<deck>/`, one subfolder per deck, so it stays clear which deck an internal image belongs to).
 
 ## Phase 1: extract and check the reference
 
@@ -90,7 +91,7 @@ Then a **fresh reviewer** (an agent that did not make the slides, or you with fr
 ## Pitfalls (short)
 
 - `text-xl` is 20 px — smaller than the ~21 px base, not bigger.
-- Base Slidev CSS beats utility classes on tables and blockquotes; use the `!` prefix.
+- Base Slidev CSS beats utility classes on tables and blockquotes; use the `!` prefix. The default theme draws a grey line under every table row (on `tr`, not `td`): an HTML table used for layout (arrows, labels beside a table) needs `[&_tr]:border-0` or `class="!border-0"` on each `tr`, else lines cross the whole slide.
 - Typographic quotes in `class=”…”` silently disable the class.
 - The default theme greys out the first paragraph after a title; the project may need one CSS line.
 - KaTeX does not render inside raw HTML paragraphs.
