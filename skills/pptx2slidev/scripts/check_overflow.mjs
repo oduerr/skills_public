@@ -80,11 +80,13 @@ try {
       if (!/cover|center|section|intro|end|fact|quote|statement/.test(layout.className)) {
         let bottom = 0, minFont = 99, textChars = 0
         for (const el of layout.querySelectorAll('*')) {
-          if (el.closest('.source') || el.closest('.katex') || el.tagName === 'H1') continue
+          if (el.closest('.source') || el.tagName === 'H1') continue
+          const isKatex = el.classList.contains('katex')
+          if (!isKatex && el.closest('.katex')) continue  // count a formula as one box
           const r = el.getBoundingClientRect()
           if (r.width === 0 || r.height === 0) continue
           const own = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join('')
-          if (el.children.length === 0 || el.tagName === 'IMG' || own.length > 0) bottom = Math.max(bottom, r.bottom - box.top)
+          if (isKatex || el.children.length === 0 || el.tagName === 'IMG' || own.length > 0) bottom = Math.max(bottom, r.bottom - box.top)
           if (own.length > 3 && !el.closest('pre')) {
             minFont = Math.min(minFont, parseFloat(getComputedStyle(el).fontSize)); textChars += own.length
           }

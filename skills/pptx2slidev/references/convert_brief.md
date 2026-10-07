@@ -22,15 +22,20 @@ Fill in before handing this to an agent: `<WORK>` (work folder), `<DECK_MD>` (ta
 7. Copy only the images you use into `<IMG_DIR>`. For each image add provenance (comment next to it AND a row in `<IMG_DIR>/PROVENANCE.md`) following `references/provenance.md`. Images with rights `unclear` go to `<INTERN_DIR>`, with their row in `<INTERN_DIR>/PROVENANCE.md`.
 8. Animations: `v-click` only where it clearly helps (quiz answers, step-by-step reveals).
 9. Speaker notes: keep them verbatim as an HTML comment at the end of the slide.
-10. Skip slide-number boxes and footer boilerplate. Videos: placeholder line `*(Video: <name>)*` unless told otherwise.
+10. **Break slides** (title "Pause …"): take over title and text verbatim, including times and semesters. No layout work, no reference page needed.
+11. **Markers** (read by the check scripts, invisible on the slide):
+   - `<!-- ref: pNN -->` when a slide's text differs a lot from its reference page (e.g. rebuilt as a table), so the comparison pairs it correctly;
+   - `<!-- ref: pNN crop -->` when the slide is mainly a crop of reference page NN (its words are in the image);
+   - `<!-- typo: old -> new -->` for every typo you fix, one per fix, at the end of that slide.
+12. Skip slide-number boxes and footer boilerplate. Videos: placeholder line `*(Video: <name>)*` unless told otherwise.
 
 ## Text: the hard rule
-Never shorten, summarise, paraphrase, translate or "improve" text. Every word stays. Fix only obvious typos and list them. Why: these are the author's teaching words; a shortened sentence is a content change the author has to find and undo.
+Never shorten, summarise, paraphrase, translate or "improve" text. Every word stays. Fix only obvious typos, mark each with a `<!-- typo: old -> new -->` comment, and list them. Why: these are the author's teaching words; a shortened sentence is a content change the author has to find and undo.
 
 ## KaTeX pitfall
 KaTeX does not render inside raw HTML like `<p>…$x$…</p>`. Put math in Markdown paragraphs (inside a `<div>`, leave blank lines around the Markdown).
 
 ## Before you report
 - Run `node <SKILL>/scripts/check_overflow.mjs <DECK_MD>` once and fix clear overflow. A layout loop follows, so do not spend more than one fix round.
-- Run `python <SKILL>/scripts/provenance.py <DECK_MD>`.
-- Report: file written, number of slides, slides with crops, exceptions to the layout rules, typos fixed, images with unclear rights, open problems.
+- Run `python <SKILL>/scripts/provenance.py <DECK_MD>` and `python <SKILL>/scripts/lint_layout.py <DECK_MD>`; fix flags or give the reason.
+- Report: file written, number of slides, slides with crops, exceptions to the layout rules (with reasons), typos fixed (old → new), stale content you kept verbatim (old dates, semesters, calendars), visual elements you dropped, images with unclear rights, open problems.

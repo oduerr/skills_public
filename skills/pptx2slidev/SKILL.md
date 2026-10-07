@@ -20,20 +20,27 @@ Collect these from the request, the project (README, CLAUDE.md, existing decks, 
    - `thorough`: loop up to 10 rounds.
    The user may also give a number ("up to 7 rounds").
 5. **Agents**: the user says how many ("use four agents, one per deck"). If not said and there is more than one deck, ask. Split by deck, not by slide range: one agent who owns a whole deck keeps it consistent. One deck = do it yourself or with one agent.
-6. **Image folders**: where deck images go (`public/<deck>/`) and the internal folder for images with unclear rights (default `public/_intern/<deck>/`, one subfolder per deck, so it stays clear which deck an internal image belongs to).
+6. **Project settings**: look for a section "Slidev conversion" in the project README (or CLAUDE.md). It records what the next run needs: style, the `--ignore` selectors for decorative layouts in the overflow checker (e.g. `--ignore=.htwg-cover`), image folders, where reference PDFs live. If it is missing, write it at the end of the run (Phase 4), so the next run does not rediscover it.
+7. **Image folders**: where deck images go (`public/<deck>/`) and the internal folder for images with unclear rights (default `public/_intern/<deck>/`, one subfolder per deck, so it stays clear which deck an internal image belongs to).
 
 ## Phase 1: extract and check the reference
 
-Set up once: a Python venv with `python-pptx` and `Pillow`; poppler (`pdftotext`, `pdftoppm`, `pdfinfo`); a Slidev install with `playwright-chromium` (the scripts look in `$SLIDEV_RUNTIME`, the deck's `node_modules`, then `~/.local/share/slidev-runtime`). Use a work folder outside the repo, one per deck (`WORK`).
+Set up once: a Python venv with `python-pptx` and `Pillow` in a place that survives a reboot (default `~/.local/share/pptx2slidev/venv`; not `/tmp`):
+`python3 -m venv ~/.local/share/pptx2slidev/venv && ~/.local/share/pptx2slidev/venv/bin/pip install python-pptx Pillow`. Also: poppler (`pdftotext`, `pdftoppm`, `pdfinfo`); a Slidev install with `playwright-chromium` (the scripts look in `$SLIDEV_RUNTIME`, the deck's `node_modules`, then `~/.local/share/slidev-runtime`). Use a work folder outside the repo, one per deck (`WORK`).
 
 ```bash
-python scripts/extract.py deck.pptx $WORK            # dump.md, slides.json, media/
-python scripts/reference.py $WORK/slides.json ref.pdf $WORK --render
+PY=~/.local/share/pptx2slidev/venv/bin/python
+$PY scripts/extract.py deck.pptx $WORK            # dump.md, slides.json, media/
+$PY scripts/reference.py $WORK/slides.json ref.pdf $WORK --render
 ```
 
 **The reference PDF** is the ground truth for every comparison. Best is a PDF the author exported from PowerPoint (real fonts, WMF graphics, formulas). Ask where they keep these if the project does not say.
 
-`reference.py` matches PDF pages to the visible slides by title and text and reports `match: ok` or `mismatch` (a PDF older or newer than the .pptx shows as missing or extra pages). Then:
+`reference.py` matches PDF pages to the visible slides by title and text and reports `match: ok` or `mismatch` (a PDF older or newer than the .pptx shows as missing or extra pages).
+
+**Break slides** (title starts with "Pause" or "Break"; change with `--break-pattern`) are listed separately and never cause a mismatch: authors often add them after the lecture, when no new PDF is made. Take them over as they are — title and text verbatim, including times and semesters, no layout work. They record where the break was, which is useful history.
+
+Then:
 - `ok` → go on.
 - `mismatch` or no PDF → **ask the user to export a fresh PDF from PowerPoint** and give them the problem list — also when the mismatch looks small (e.g. only a break slide is missing). Do not decide this yourself: the user knows which version is current, and an export takes them a minute. You may suggest "continue with the old PDF" as an option in the same question. Only if they cannot or say "skip", make one with LibreOffice (`soffice --headless --convert-to pdf deck.pptx`, with a timeout; if a pptx skill with a `soffice.py` wrapper is installed, use that — bare soffice can hang) and note in the final report that the reference is a LibreOffice render.
 
@@ -53,18 +60,20 @@ Each round, per deck:
 
 ```bash
 R=$WORK/round-NN
-python scripts/compare.py DECK.md $WORK $R               # export, page match, missing words, cmp-NN.png, sheets
-node scripts/check_overflow.mjs DECK.md > $R/overflow.txt  # add --ignore=.cover-class for decorative layouts
-python scripts/provenance.py DECK.md > $R/provenance.txt
+$PY scripts/compare.py DECK.md $WORK $R               # export, page match, missing words, layout flags, cmp-NN.png, sheets
+node scripts/check_overflow.mjs DECK.md > $R/overflow.txt  # add --ignore=<selectors> from the project settings
+$PY scripts/provenance.py DECK.md > $R/provenance.txt
 ```
 
 Both scripts start their own private server (localhost, random port). Never take screenshots on a server the user is presenting from: Slidev syncs navigation, so you would move their slides.
 
 Then a **fresh reviewer** (an agent that did not make the slides, or you with fresh eyes if working alone) follows `references/review_brief.md`: it looks at every compare image, explains every missing word, and ends with `VERDICT: SHIP | ANOTHER ROUND` plus a MUST/SHOULD/NICE list. A **fixer** follows `references/fix_brief.md` for the MUST and SHOULD items. Look at a few compare images yourself every round — agents' self-reports overstate.
 
+`compare.py` reads marker comments in the deck (the converter writes them, see the convert brief): `<!-- ref: pNN -->` pins a slide to a reference page, `<!-- ref: pNN crop -->` marks a slide whose text is inside a cropped image, `<!-- typo: old -> new -->` marks a deliberate typo fix. Crops and typo fixes are then not counted as missing words, so the count can really reach zero. It also runs `lint_layout.py`: absolute positioning, offsets, negative or big margins, `mix-blend`, fixed boxes. Every flag must be fixed or listed with a reason. Why: in an earlier run the fixer added `!mt-24`, `-mt-10` and `mix-blend-multiply` against the brief and did not report it; only a look at the slides found it.
+
 **Stop** when all hold, or when the round limit from Phase 0 is reached:
 1. `overflow.txt` has no `overflow`, `NOT RENDERED` or `broken image` lines;
-2. `report.md` has no really lost words (the reviewer has explained every remaining one: crop, fixed typo, formula, footer);
+2. `report.md` has no really lost words (remaining ones explained by the reviewer: footer, page numbers) and no unexplained layout flags;
 3. the reviewer says SHIP;
 4. `provenance.py` reports no problems.
 
@@ -73,8 +82,10 @@ Then a **fresh reviewer** (an agent that did not make the slides, or you with fr
 1. Run one last `compare.py` round as the final PDF-against-PDF check.
 2. Give the user:
    - the contact sheets (`sheet-NN.png`: reference left, Slidev right, all pages) — the fastest way for them to see everything;
-   - a short report: slide counts; deliberate differences and why (crops, fixed typos, formulas rewritten in KaTeX, layout changes); slides they should look at themselves; images with unclear rights (they decide); exceptions to the layout rules; what is still open if the round limit was hit; whether the reference was a LibreOffice render.
-3. Commit only after the user agrees.
+   - a short report: slide counts; deliberate differences and why (crops, formulas rewritten in KaTeX, layout changes); exceptions to the layout rules with reasons; what is still open if the round limit was hit; whether the reference was a LibreOffice render;
+   - a section **"For you to decide"**: every typo fix (old → new), stale content that was kept verbatim (old semesters, dates, calendars, break times), visual elements that were dropped (backgrounds, decorations the project has no class for), images with unclear rights.
+3. If the project settings section was missing or incomplete, add it to the project README (style, `--ignore` selectors, image folders, reference PDF location).
+4. Commit only after the user agrees.
 
 ## Pitfalls (short)
 
@@ -94,5 +105,7 @@ Then a **fresh reviewer** (an agent that did not make the slides, or you with fr
 - `scripts/compare.py` — one check round (export, page match, missing words, compare images, report)
 - `scripts/check_overflow.mjs` — overflow, broken images, small text, underfilled slides
 - `scripts/provenance.py` — image provenance check
+- `scripts/lint_layout.py` — layout tricks per slide (run by compare.py)
+- `scripts/deck.py` — reads a Slidev deck into exported slides and marker comments (`python scripts/deck.py DECK.md` lists them)
 - `references/convert_brief.md`, `review_brief.md`, `fix_brief.md` — briefs for agents
 - `references/provenance.md` — provenance format and rules

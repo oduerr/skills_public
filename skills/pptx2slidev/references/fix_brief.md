@@ -18,7 +18,7 @@ Fill in: `<DECK_MD>`, `<ROUND_DIR>`, `<LIST>` (the reviewer's MUST and SHOULD it
 - Keep speaker notes and provenance comments.
 
 ## Verify your own work
-Run `node <SKILL>/scripts/check_overflow.mjs <DECK_MD>` and read the lines for your pages. Every overflow on your pages must be gone (at most 3 runs). Do not claim a fix you did not check.
+Run `node <SKILL>/scripts/check_overflow.mjs <DECK_MD>` and `python <SKILL>/scripts/lint_layout.py <DECK_MD>` and read the lines for your pages. Any layout flag you added must be removed or reported as an exception with its reason — an unreported flag counts as a false report. Every overflow on your pages must be gone (at most 3 runs). Do not claim a fix you did not check.
 
 ## Report
 One line per item: `page NN: fixed – <what you changed>` or `page NN: not fixed – <why>`.
