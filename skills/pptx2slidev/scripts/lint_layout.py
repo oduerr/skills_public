@@ -14,6 +14,12 @@ Flags, per exported slide:
   blend        mix-blend-* (often used to hide an overlap)
   fixed-box    fixed width/height boxes in px on divs (w-[600px], h-[300px] on <div>)
   css          <style> blocks inside the deck
+Also prints (info, not failing): all spacing utilities per slide, and all
+arbitrary text sizes (text-[1.55rem]) with their slides. Compare these lines
+between rounds: a fixer that only shrinks a margin below a threshold
+(mt-16 -> mt-8) has not fixed anything; many different sizes make the deck uneven.
+Only class/style attributes, HTML tags, {mdc} attributes and `class:` lines are
+checked, never slide text or code.
 Why: these tricks make a slide look right once and break on the next change of
 text, font or size; earlier fixers added them silently. Each flagged item must be
 fixed or listed as an exception with a reason in the round report.
@@ -35,6 +41,9 @@ RULES = [
     ("fixed-box", re.compile(r"<div[^>]*class=\"[^\"]*(?<![\w-])[wh]-\[\d+px\]")),
     ("css", re.compile(r"<style")),
 ]
+CODE_SEGMENTS = re.compile(r"<[^>]+>|\{[^}\n]*\}|^\s*class:.*$", re.M)  # tags, {mdc attrs}, class: frontmatter
+SPACING = re.compile(r"(?<![\w-])!?-?[mp][tblrxy]?-(?:\[[^\]]+\]|\d+)(?![\w])")
+SIZE = re.compile(r"(?<![\w-])!?text-\[[\d.]+(?:rem|em|px)\]")
 SKIP_LINE = re.compile(r'class="[^"]*\bsource\b|Quelle|Source|Photo:|Foto:|Credit|CC BY', re.I)
 
 
@@ -42,13 +51,21 @@ def main():
     deck = sys.argv[1]
     allow = re.compile(sys.argv[sys.argv.index("--allow") + 1]) if "--allow" in sys.argv else None
     found = 0
+    spacing, sizes = {}, {}
     for k, s in enumerate(exported(deck), 1):
         hits = []
-        for line in s["body"].splitlines():
-            if line.lstrip().startswith("<!--"):
+        body = re.sub(r"<!--.*?-->", " ", s["body"], flags=re.S)
+        body = re.sub(r"^(```|~~~).*?^\1", " ", body, flags=re.S | re.M)  # code blocks
+        for line in body.splitlines():
+            segs = " ".join(m.group(0) for m in CODE_SEGMENTS.finditer(line))
+            if not segs:
                 continue
+            for m in SPACING.finditer(segs):
+                spacing.setdefault(k, []).append(m.group(0))
+            for m in SIZE.finditer(segs):
+                sizes.setdefault(m.group(0).lstrip("!"), []).append(k)
             for name, rx in RULES:
-                for m in rx.finditer(line):
+                for m in rx.finditer(segs):
                     if name == "absolute" and SKIP_LINE.search(line):
                         continue
                     if allow and allow.search(m.group(0)):
@@ -58,6 +75,12 @@ def main():
             found += len(hits)
             print(f"slide {k} ({s['title'][:40]}): " + ", ".join(sorted(set(hits))))
     print(f"{found} layout flags" if found else "no layout flags")
+    n_sp = sum(len(v) for v in spacing.values())
+    print(f"info: {n_sp} spacing utilities on {len(spacing)} slides"
+          + (": " + "; ".join(f"{k}: {' '.join(v)}" for k, v in spacing.items()) if spacing else ""))
+    if sizes:
+        print(f"info: {len(sizes)} different arbitrary text sizes: "
+              + "; ".join(f"{z} on {sorted(set(v))}" for z, v in sorted(sizes.items())))
     sys.exit(1 if found else 0)
 
 

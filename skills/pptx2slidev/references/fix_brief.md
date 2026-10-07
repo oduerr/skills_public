@@ -7,9 +7,10 @@ Fill in: `<DECK_MD>`, `<ROUND_DIR>`, `<LIST>` (the reviewer's MUST and SHOULD it
 ## How
 1. Read the file. For each item, look at `<ROUND_DIR>/cmp-NN.png` to see the problem yourself.
 2. Fix in this order: lost text, overflow and broken images, unreadable content, then size and balance.
-3. Ways to make things fit, best first: smaller image height; two columns (built-in layout); a wrapper with a slightly smaller em-based font size for that slide. Ways to fill an empty slide: bigger images, bigger text. Not: spacing hacks (`mt-12`, `space-y-8`, `h-full justify-center`) — they push titles around and break on the next change.
-4. Utility classes that lose against Slidev's base CSS (tables, blockquotes) need the `!` prefix (`!py-1`, `!text-[1.1em]`). `text-xl` is 20 px, smaller than the ~21 px base, so it does not make text bigger.
-5. Use straight quotes in HTML attributes (`class="…"`). Typographic quotes make the class silently fail.
+3. Making a flagged margin smaller (mt-16 → mt-8) is not a fix: remove the spacing and solve it with layout, or keep it and say why. List every margin you kept. Text size: prefer the project's size classes; avoid a new arbitrary `text-[x.xxrem]` per slide, the deck gets uneven.
+4. Ways to make things fit, best first: smaller image height; two columns (built-in layout); a wrapper with a slightly smaller em-based font size for that slide. Ways to fill an empty slide: bigger images, bigger text. Not: spacing hacks (`mt-12`, `space-y-8`, `h-full justify-center`) — they push titles around and break on the next change.
+5. Utility classes that lose against Slidev's base CSS (tables, blockquotes) need the `!` prefix (`!py-1`, `!text-[1.1em]`). `text-xl` is 20 px, smaller than the ~21 px base, so it does not make text bigger.
+6. Use straight quotes in HTML attributes (`class="…"`). Typographic quotes make the class silently fail.
 
 ## Hard rules
 - Never shorten, paraphrase or remove text. If it does not fit, change size or layout.

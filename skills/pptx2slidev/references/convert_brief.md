@@ -24,10 +24,10 @@ Fill in before handing this to an agent: `<WORK>` (work folder), `<DECK_MD>` (ta
 9. Speaker notes: keep them verbatim as an HTML comment at the end of the slide.
 10. **Visual signals** that recur across slides (a pencil on exercise slides, a blackboard background or a small blackboard icon for "go to the board", a code-style background) carry meaning for the teacher. Map them to the project's slide classes from `<STYLE>`. If the project has no class for a recurring signal, do not drop it silently: report it, and propose a class (CSS only if possible, so there is no image-rights question).
 11. **Break slides** (title "Pause …"): take over title and text verbatim, including times and semesters. No layout work, no reference page needed.
-12. **Markers** (read by the check scripts, invisible on the slide):
+12. **Markers** (read by the check scripts, invisible on the slide). Put them at the TOP of the slide, right after the frontmatter: Slidev uses the last comment of a slide as speaker notes.
    - `<!-- ref: pNN -->` when a slide's text differs a lot from its reference page (e.g. rebuilt as a table), so the comparison pairs it correctly;
    - `<!-- ref: pNN crop -->` when the slide is mainly a crop of reference page NN (its words are in the image);
-   - `<!-- typo: old -> new -->` for every typo you fix, one per fix, at the end of that slide.
+   - `<!-- typo: old -> new -->` for every typo you fix, one per fix; use quotes for more than one word: `<!-- typo: "Insbesonder e" -> "Insbesondere" -->`.
 13. Skip slide-number boxes and footer boilerplate. Videos: placeholder line `*(Video: <name>)*` unless told otherwise.
 
 ## Text: the hard rule

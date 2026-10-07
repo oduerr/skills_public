@@ -8,6 +8,9 @@ Marker comments the converter writes into a slide (read here):
   <!-- ref: p34 -->          this slide shows reference page 34
   <!-- ref: p34 crop -->     ... and is (mainly) a crop of that page, so its text is in the image
   <!-- typo: Celcius -> Celsius -->   a deliberate typo fix (the old word is not "lost")
+  <!-- typo: "Insbesonder e" -> "Insbesondere" -->   quotes for more than one word
+Put markers at the TOP of the slide (right after the frontmatter): Slidev uses the
+LAST comment of a slide as speaker notes, so a marker at the end would show up there.
 """
 import re
 from pathlib import Path
@@ -85,7 +88,8 @@ def read_deck(path, _depth=0):
             "file": str(path), "line": start, "fm": d, "body": text,
             "hidden": d.get("hide", d.get("hidden", "")).lower() == "true",
             "pin": int(pin.group(1)) if pin else None, "crop": bool(pin and pin.group(2)),
-            "typos": re.findall(r"<!--\s*typo:\s*(\S+)\s*->\s*(\S+)\s*-->", text),
+            "typos": [(a or b, c or d) for a, b, c, d in re.findall(
+                r'<!--\s*typo:\s*(?:"([^"]+)"|(\S+))\s*->\s*(?:"([^"]+)"|(\S+))\s*-->', text)],
             "title": title,
         })
     return out
