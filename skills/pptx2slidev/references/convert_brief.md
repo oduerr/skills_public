@@ -22,12 +22,13 @@ Fill in before handing this to an agent: `<WORK>` (work folder), `<DECK_MD>` (ta
 7. Copy only the images you use into `<IMG_DIR>`. For each image add provenance (comment next to it AND a row in `<IMG_DIR>/PROVENANCE.md`) following `references/provenance.md`. Images with rights `unclear` go to `<INTERN_DIR>`, with their row in `<INTERN_DIR>/PROVENANCE.md`.
 8. Animations: `v-click` only where it clearly helps (quiz answers, step-by-step reveals).
 9. Speaker notes: keep them verbatim as an HTML comment at the end of the slide.
-10. **Break slides** (title "Pause …"): take over title and text verbatim, including times and semesters. No layout work, no reference page needed.
-11. **Markers** (read by the check scripts, invisible on the slide):
+10. **Visual signals** that recur across slides (a pencil on exercise slides, a blackboard background or a small blackboard icon for "go to the board", a code-style background) carry meaning for the teacher. Map them to the project's slide classes from `<STYLE>`. If the project has no class for a recurring signal, do not drop it silently: report it, and propose a class (CSS only if possible, so there is no image-rights question).
+11. **Break slides** (title "Pause …"): take over title and text verbatim, including times and semesters. No layout work, no reference page needed.
+12. **Markers** (read by the check scripts, invisible on the slide):
    - `<!-- ref: pNN -->` when a slide's text differs a lot from its reference page (e.g. rebuilt as a table), so the comparison pairs it correctly;
    - `<!-- ref: pNN crop -->` when the slide is mainly a crop of reference page NN (its words are in the image);
    - `<!-- typo: old -> new -->` for every typo you fix, one per fix, at the end of that slide.
-12. Skip slide-number boxes and footer boilerplate. Videos: placeholder line `*(Video: <name>)*` unless told otherwise.
+13. Skip slide-number boxes and footer boilerplate. Videos: placeholder line `*(Video: <name>)*` unless told otherwise.
 
 ## Text: the hard rule
 Never shorten, summarise, paraphrase, translate or "improve" text. Every word stays. Fix only obvious typos, mark each with a `<!-- typo: old -> new -->` comment, and list them. Why: these are the author's teaching words; a shortened sentence is a content change the author has to find and undo.
