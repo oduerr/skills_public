@@ -14,6 +14,8 @@ Flags, per exported slide:
   blend        mix-blend-* (often used to hide an overlap)
   fixed-box    fixed width/height boxes in px on divs (w-[600px], h-[300px] on <div>)
   css          <style> blocks inside the deck
+  layout-table an HTML table used for layout (cells with border-0) without
+               [&_tr]:!border-0: the theme's grey row lines run through it
 Also prints (info, not failing): all spacing utilities per slide, and all
 arbitrary text sizes (text-[1.55rem]) with their slides. Compare these lines
 between rounds: a fixer that only shrinks a margin below a threshold
@@ -71,6 +73,10 @@ def main():
                     if allow and allow.search(m.group(0)):
                         continue
                     hits.append(f"{name} `{m.group(0)}`")
+        for t in re.finditer(r"<table\b[^>]*>.*?</table>", body, flags=re.S | re.I):
+            tbl = t.group(0)
+            if re.search(r'class="[^"]*\bborder-0\b', tbl) and not re.search(r"\[&_tr\]:!?border-0|<tr[^>]*!border-0", tbl):
+                hits.append("layout-table `<table>` with border-0 cells but no [&_tr]:!border-0 (theme row lines will show)")
         if hits:
             found += len(hits)
             print(f"slide {k} ({s['title'][:40]}): " + ", ".join(sorted(set(hits))))

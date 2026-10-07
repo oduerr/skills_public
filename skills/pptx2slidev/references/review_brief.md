@@ -10,6 +10,9 @@ Fill in: `<ROUND_DIR>`, `<DECK_MD>`, `<RANGE>` (reference pages to review, or "a
 - `<ROUND_DIR>/overflow.txt`: output of the overflow checker.
 - `<DECK_MD>`: the source, to find the cause of a problem.
 
+## Tools
+For measurements (pixel checks, crops), use the skill's venv: `~/.local/share/pptx2slidev/venv/bin/python` (has Pillow).
+
 ## What to do
 1. Look at EVERY compare image in your range with the Read tool. For each page, write one line with a concrete detail you saw on it (e.g. "p12: table with 4 rows, header blue in the original, plain in Slidev"). This shows you really looked; a fast review that only repeats the checker is worth nothing. Not a sample: a checker that says "clean" does not mean a slide looks right (too-small images, cramped columns, wrong emphasis).
 2. For every page with missing words: decide if the words are really lost, or are inside a cropped image, a deliberately fixed typo, a formula now in KaTeX, or footer boilerplate. Really lost words are always MUST.
