@@ -14,6 +14,12 @@ Flags, per exported slide:
   blend        mix-blend-* (often used to hide an overlap)
   fixed-box    fixed width/height boxes in px on divs (w-[600px], h-[300px] on <div>)
   css          <style> blocks inside the deck
+  class-on-two-cols  `class:` on a two-cols / two-cols-header slide (has no effect)
+  yaml-tag     `layoutClass: !…` without quotes (YAML tag: silently dropped)
+  arbitrary-spacing  margins/padding/gaps with arbitrary values >= 3rem or >= 10px
+  big-space    space-y-8 and more
+  inline-style style="margin/padding/top/left/position/transform: …"
+  One line per slide that looks like a source/credit line is not checked at all.
   layout-table an HTML table used for layout (cells with border-0) without
                [&_tr]:!border-0: the theme's grey row lines run through it
 Also prints (info, not failing): all spacing utilities per slide, and all
@@ -42,20 +48,52 @@ RULES = [
     ("blend", re.compile(r"mix-blend-")),
     ("fixed-box", re.compile(r"<div[^>]*class=\"[^\"]*(?<![\w-])[wh]-\[\d+px\]")),
     ("css", re.compile(r"<style")),
+    ("arbitrary-spacing", re.compile(r"(?<![\w-])!?-?(?:[mp][tblrxy]?|space-[xy]|gap(?:-[xy])?)-\[(?:[3-9]|\d{2,})(?:\.\d+)?(?:rem|em)\]|(?<![\w-])!?-?(?:[mp][tblrxy]?)-\[\d{2,}px\]")),
+    ("big-space", re.compile(r"(?<![\w-])!?space-y-(?:[89]|\d{2,})(?![\w])")),
+    ("inline-style", re.compile(r"style=\"[^\"]*\b(?:margin|padding|top|left|right|bottom|position|transform)\s*:", re.I)),
 ]
 CODE_SEGMENTS = re.compile(r"<[^>]+>|\{[^}\n]*\}|^\s*class:.*$", re.M)  # tags, {mdc attrs}, class: frontmatter
 SPACING = re.compile(r"(?<![\w-])!?-?[mp][tblrxy]?-(?:\[[^\]]+\]|\d+)(?![\w])")
-SIZE = re.compile(r"(?<![\w-])!?text-\[[\d.]+(?:rem|em|px)\]")
-SKIP_LINE = re.compile(r'class="[^"]*\bsource\b|Quelle|Source|Photo:|Foto:|Credit|CC BY', re.I)
+SIZE = re.compile(r"(?<![\w\]:-])!?text-\[[\d.]+(?:rem|em|px)\]")
+SKIP_LINE = re.compile(r'class="[^"]*\bsource\b|Quelle|Source|Photo:|Foto:|Credit|CC BY|Remark|©|Image:|Bild:', re.I)
+
+
+def raw_layoutclass_warnings(deck):
+    """layoutClass: !grid-cols-[..] without quotes is a YAML tag: the value is silently dropped."""
+    out = []
+    from pathlib import Path
+    seen = set()
+
+    def scan(path):
+        if path in seen:
+            return
+        seen.add(path)
+        for n, line in enumerate(Path(path).read_text().splitlines(), 1):
+            m = re.match(r"\s*(layoutClass|class)\s*:\s*(!\S.*)$", line)
+            if m:
+                out.append(f"{Path(path).name}:{n}: yaml-tag `{m.group(1)}: {m.group(2)[:40]}` starts with ! without quotes (YAML tag, value is dropped); write '{m.group(2)}'")
+            m = re.match(r"\s*src\s*:\s*(\S+)", line)
+            if m:
+                scan(str((Path(path).parent / m.group(1)).resolve()))
+
+    scan(str(Path(deck).resolve()))
+    return out
 
 
 def main():
     deck = sys.argv[1]
     allow = re.compile(sys.argv[sys.argv.index("--allow") + 1]) if "--allow" in sys.argv else None
     found = 0
+    for w in raw_layoutclass_warnings(deck):
+        print(w)
+        found += 1
     spacing, sizes = {}, {}
     for k, s in enumerate(exported(deck), 1):
-        hits = []
+        hits, source_used = [], False
+        fm = s["fm"]
+        if re.match(r"two-cols", fm.get("layout", "")) and fm.get("class"):
+            hits.append(f"class-on-two-cols `class: {fm['class']}` has no effect on the slide with layout {fm['layout']} "
+                        "(it lands on the column divs); put it into layoutClass")
         body = re.sub(r"<!--.*?-->", " ", s["body"], flags=re.S)
         body = re.sub(r"^(```|~~~).*?^\1", " ", body, flags=re.S | re.M)  # code blocks
         for line in body.splitlines():
@@ -66,10 +104,11 @@ def main():
                 spacing.setdefault(k, []).append(m.group(0))
             for m in SIZE.finditer(segs):
                 sizes.setdefault(m.group(0).lstrip("!"), []).append(k)
+            if SKIP_LINE.search(line) and not source_used:
+                source_used = True  # one source/credit line per slide may be positioned freely
+                continue
             for name, rx in RULES:
                 for m in rx.finditer(segs):
-                    if name == "absolute" and SKIP_LINE.search(line):
-                        continue
                     if allow and allow.search(m.group(0)):
                         continue
                     hits.append(f"{name} `{m.group(0)}`")

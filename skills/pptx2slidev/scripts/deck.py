@@ -7,6 +7,8 @@ Used by compare.py and lint_layout.py. Handles headmatter, per-slide frontmatter
 Marker comments the converter writes into a slide (read here):
   <!-- ref: p34 -->          this slide shows reference page 34
   <!-- ref: p34 crop -->     ... and is (mainly) a crop of that page, so its text is in the image
+  <!-- ref: p34 partial -->  ... part of the page is a crop (words there are listed as "maybe in crop")
+  <!-- ref: none -->         a new slide without reference page
   <!-- typo: Celcius -> Celsius -->   a deliberate typo fix (the old word is not "lost")
   <!-- typo: "Insbesonder e" -> "Insbesondere" -->   quotes for more than one word
 Put markers at the TOP of the slide: after the frontmatter, or after a blank line below
@@ -84,12 +86,14 @@ def read_deck(path, _depth=0):
             continue
         if not text.strip() and not d:
             continue
-        pin = re.search(r"<!--\s*ref:\s*p(\d+)(\s+crop)?\s*-->", text)
+        pin = re.search(r"<!--\s*ref:\s*(?:p(\d+)(?:\s+(crop|partial))?|(none))\s*-->", text)
         title = next((re.sub(r"^#+\s*", "", l).strip() for l in body if re.match(r"^#\s", l)), "")
         out.append({
             "file": str(path), "line": start, "fm": d, "body": text,
             "hidden": d.get("hide", d.get("hidden", "")).lower() == "true",
-            "pin": int(pin.group(1)) if pin else None, "crop": bool(pin and pin.group(2)),
+            "pin": int(pin.group(1)) if pin and pin.group(1) else None,
+            "crop": (pin.group(2) or False) if pin else False,   # "crop" (whole slide) or "partial"
+            "no_ref": bool(pin and pin.group(3)),                 # new slide without reference page
             "typos": [(a or b, c or d) for a, b, c, d in re.findall(
                 r'<!--\s*typo:\s*(?:"([^"]+)"|(\S+))\s*->\s*(?:"([^"]+)"|(\S+))\s*-->', text)],
             "title": title,
@@ -114,8 +118,9 @@ def marker_warnings(path, _depth=0):
             warn += marker_warnings((path.parent / d["src"]).resolve(), _depth + 1)
         if not fm and body and re.match(r"\s*<!--\s*(ref|typo):", body[0]):
             warn.append(f"{path.name}:{start}: marker directly after '---' (Slidev reads it as frontmatter); add a blank line before it")
-        if re.search(r"<!--\s*(ref|typo):[^>]*-->\s*$", "\n".join(body)):
-            warn.append(f"{path.name}:{start}: marker at the end of the slide (shown as speaker notes); move it to the top")
+        if re.search(r"<!--\s*(ref|typo|provenance):[^>]*-->\s*$", "\n".join(body)):
+            warn.append(f"{path.name}:{start}: marker/provenance comment at the end of the slide (shown as speaker notes); "
+                        "move it to the top, or end the slide with an empty <!-- --> if it has no notes")
     return warn
 
 

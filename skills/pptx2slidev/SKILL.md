@@ -1,59 +1,50 @@
 ---
 name: pptx2slidev
-description: Convert PowerPoint (.pptx) lecture or talk decks into Slidev Markdown decks that look like the original, with a check loop against a reference PDF (page matching, lost-words check, side-by-side compare images, fresh reviewer) and image provenance records. Use this skill whenever the user wants to move slides from PowerPoint to Slidev, convert or port a .pptx (or "this week's lecture", "the remaining decks") to Markdown slides, re-check or polish an earlier PPTX→Slidev conversion, or compare a Slidev deck with the old PowerPoint PDF — even if they do not say "Slidev" but the project already uses it.
+description: Convert PowerPoint (.pptx) lecture or talk decks into Slidev Markdown decks that look like the original, with a check loop against a reference PDF (page matching, lost-words check, click steps, cropped pictures, side-by-side compare images, fresh reviewer) and image provenance records; also re-checks decks that were converted earlier. Use this skill whenever the user wants to move slides from PowerPoint to Slidev, convert or port a .pptx (or "this week's lecture", "the remaining decks") to Markdown slides, re-check or polish an earlier PPTX→Slidev conversion, or compare a Slidev deck with the old PowerPoint PDF — even if they do not say "Slidev" but the project already uses it.
 ---
 
 # PowerPoint → Slidev
 
-Converting slides is easy; converting them so the author can teach from them without surprises is not. What went wrong in earlier conversions: text got shortened by fixer agents, agents reported fixes they had not made, absolutely positioned boxes drifted over content, a font change late in the process created new overflows, text inside formulas was not extracted, and screenshots taken on the author's running presentation server moved the author's slides. This skill is built around those lessons: one strong agent per deck, a reference PDF as ground truth, measurable checks, and a fresh reviewer who looks at every slide.
+Converting slides is easy; converting them so the author can teach from them without surprises is not. In real runs (WAST 14 decks, ML/DL 8 decks) the failures that mattered were silent: answers visible because click animations or cover boxes were lost, private browser tabs visible because a PowerPoint crop was ignored, formula lines cut off inside a column, slides swallowed by the parser, provenance comments shown as speaker notes, fixer agents shortening text or reporting fixes they had not made. Every deck still came out as "SHIP" from its reviewer — the errors were found by measurable checks and by the main agent looking itself. So this skill is built on: the PowerPoint file and a reference PDF as ground truth, scripts that measure, a fresh reviewer, and spot checks by the main agent.
+
+Read `references/pitfalls.md` before converting; give it to every converter and fixer.
 
 ## Phase 0: settle the setup (ask before building anything)
 
-Collect these from the request, the project (README, CLAUDE.md, existing decks, `style.css`), or ask the user in one short message. Do not start converting until they are clear.
+Collect these from the request, the project (README section "Slidev conversion", CLAUDE.md, existing decks, `style.css`), or ask the user in ONE short message. Do not start converting until they are clear.
 
-1. **Source and target**: which .pptx files, which Slidev project and file names.
-2. **Aspect ratio**: compare the .pptx (dump.md header: ratio 1.333 = 4:3, 1.778 = 16:9) with the projector and the project's other decks. Converting 4:3 into 16:9 changes every slide: about a quarter less height, so content must shrink or reflow, which drives most layout rounds. Keeping 4:3 converts almost 1:1 but leaves side bars on a wide projector. Ask the user if the project does not say; record the choice in the project settings.
-3. **Style**: theme, fonts, base size, existing CSS helpers or layouts in the project. Decide this FIRST — changing fonts or base size after the layout rounds causes new overflows everywhere. Default when the project has nothing: default theme, built-in layouts, no custom CSS.
-4. **Reference PDF** (see below).
-5. **Effort**, set by the user, default `normal`:
-   - `quick`: one conversion pass and one check round, report the rest.
-   - `normal`: loop up to 5 rounds.
-   - `thorough`: loop up to 10 rounds.
-   The user may also give a number ("up to 7 rounds").
-6. **Agents**: the user says how many ("use four agents, one per deck"). If not said and there is more than one deck, ask. Split by deck, not by slide range: one agent who owns a whole deck keeps it consistent. One deck = do it yourself or with one agent.
-7. **Project settings**: look for a section "Slidev conversion" in the project README (or CLAUDE.md). It records what the next run needs: style, the `--ignore` selectors for decorative layouts in the overflow checker (e.g. `--ignore=.htwg-cover`), image folders, where reference PDFs live. If it is missing, write it at the end of the run (Phase 4), so the next run does not rediscover it.
-8. **Image folders**: where deck images go (`public/<deck>/`) and the internal folder for images with unclear rights (default `public/_intern/<deck>/`, one subfolder per deck, so it stays clear which deck an internal image belongs to).
+1. **Mode**: `convert` (new deck from .pptx) or `check` (a deck converted earlier, see "Check mode" below).
+2. **Source and target**: which .pptx files (ask when two versions exist, e.g. `_fuer_2026`, `_with_video`), which Slidev project and file names.
+3. **Aspect ratio**: compare the .pptx (dump.md header: 1.333 = 4:3, 1.778 = 16:9) with the projector and the project's other decks. 4:3 into 16:9 means about a quarter less height: rebuild (e.g. two columns), do not squeeze. Record the choice in the project settings.
+4. **Style**: theme, fonts, base size, slide classes (exercise, code, blackboard …). Decide FIRST — changing fonts after the layout rounds causes new overflows everywhere. Default: default theme, built-in layouts, no custom CSS.
+5. **Reference PDFs** (Phase 1). Check all decks at once and ask the user once.
+6. **Effort** (user may override): `quick` = one pass + one check round; `normal` = up to 5 rounds (default); `thorough` = up to 10; or a number.
+7. **Agents**: the user says how many ("four agents"). If not said and there is more than one deck, ask. One agent per deck (see Orchestration).
+8. **Project settings**: a README section "Slidev conversion" records style, ratio, slide classes, `--ignore` selectors for the overflow checker (e.g. `--ignore=.htwg-cover`), image folders, reference PDF location, `vite.config.ts` needs. If missing, write it at the end of the run.
+9. **Image folders**: `public/<deck>/` and, for images that are not free, `public/_intern/<deck>/`.
 
 ## Phase 1: extract and check the reference
 
-Set up once: a Python venv with `python-pptx` and `Pillow` in a place that survives a reboot (default `~/.local/share/pptx2slidev/venv`; not `/tmp`):
-`python3 -m venv ~/.local/share/pptx2slidev/venv && ~/.local/share/pptx2slidev/venv/bin/pip install python-pptx Pillow`. Also: poppler (`pdftotext`, `pdftoppm`, `pdfinfo`); a Slidev install with `playwright-chromium` (the scripts look in `$SLIDEV_RUNTIME`, the deck's `node_modules`, then `~/.local/share/slidev-runtime`). Use a work folder outside the repo, one per deck (`WORK`).
+Set up once: a venv that survives a reboot (`~/.local/share/pptx2slidev/venv`, not `/tmp`): `python3 -m venv ~/.local/share/pptx2slidev/venv && ~/.local/share/pptx2slidev/venv/bin/pip install python-pptx Pillow`. Also poppler (`pdftotext`, `pdftoppm`, `pdfinfo`, `pdffonts`) and a Slidev install with `playwright-chromium` (the scripts look in `$SLIDEV_RUNTIME`, the deck's `node_modules`, then `~/.local/share/slidev-runtime`). One work folder per deck, outside the repo; each agent has its own folder and never writes helper scripts into a shared one (in a run, one agent overwrote another's helper and mapped all slides wrong).
 
 ```bash
 PY=~/.local/share/pptx2slidev/venv/bin/python
-$PY scripts/extract.py deck.pptx $WORK            # dump.md, slides.json, media/
+$PY scripts/extract.py deck.pptx $WORK      # dump.md, slides.json, pictures.json, media/
 $PY scripts/reference.py $WORK/slides.json ref.pdf $WORK --render
 ```
 
-**The reference PDF** is the ground truth for every comparison. Best is a PDF the author exported from PowerPoint (real fonts, WMF graphics, formulas). Ask where they keep these if the project does not say.
+`dump.md` lists per visible slide: shapes with positions, text, a `raw text:` line (authoritative, includes formula text), pictures with **CROPPED / ROTATED / STRETCHED** notes (media files are already cropped; `*.raw.*` files must not be used), **COVER** shapes (white boxes over pictures, often hiding an answer until a click), **MARK** shapes (circles, arrows drawn on pictures), **CLICK n:** lines (what appears or disappears per click), notes and links.
 
-`reference.py` matches PDF pages to the visible slides by title and text and reports `match: ok` or `mismatch` (a PDF older or newer than the .pptx shows as missing or extra pages).
+**The reference PDF** is the ground truth. Best is a PDF the author exported from PowerPoint. `reference.py` matches pages to slides and reports `match: ok | mismatch`, warns when the PDF is older than the .pptx, finds reordered slides, and stores `slide_box_pt` (where the slide sits on the page). **Break slides** (title contains "Pause"/"Break") never cause a mismatch: they are often added after the lecture. Take them over verbatim (times, semesters), no layout work.
 
-**Break slides** (title starts with "Pause" or "Break"; change with `--break-pattern`) are listed separately and never cause a mismatch: authors often add them after the lecture, when no new PDF is made. Take them over as they are — title and text verbatim, including times and semesters, no layout work. They record where the break was, which is useful history.
-
-Then:
 - `ok` → go on.
-- `mismatch` or no PDF → **ask the user to export a fresh PDF from PowerPoint** and give them the problem list — also when the mismatch looks small (e.g. only a break slide is missing). Do not decide this yourself: the user knows which version is current, and an export takes them a minute. You may suggest "continue with the old PDF" as an option in the same question. Only if they cannot or say "skip", make one with LibreOffice (`soffice --headless --convert-to pdf deck.pptx`, with a timeout; if a pptx skill with a `soffice.py` wrapper is installed, use that — bare soffice can hang) and note in the final report that the reference is a LibreOffice render.
-
-Hidden slides are not in the PDF and not in `slides.json`; that is correct. Page numbers and slide numbers differ, so always go through `reference.json`.
+- `mismatch` or no PDF → ask the user ONCE for all decks to export fresh PDFs from PowerPoint, with the problem lists; offer "use LibreOffice" in the same question. If the user said beforehand not to wait, render with LibreOffice (`soffice --headless --convert-to pdf`, with a timeout; prefer a pptx skill's `soffice.py` wrapper if installed) and say so in the report. LibreOffice specifics are in `references/pitfalls.md`.
 
 ## Phase 2: convert
 
-Give each converter agent `references/convert_brief.md` with the placeholders filled in (or follow it yourself). Use Opus or Sonnet; do not use Haiku for converting or fixing — it shortened text and faked "no changes" in earlier runs. The core rules, with the reasons in the brief:
-- Never shorten, paraphrase or translate text.
-- Built-in layouts first; no absolute positioning except one source/credit line per slide; no custom grid divs.
-- Crop what cannot be rebuilt from the 200-dpi reference page.
-- Provenance for every image (comment in the deck + row in `PROVENANCE.md`), see `references/provenance.md`. Unclear rights count as not free → internal folder.
+Give each converter `references/convert_brief.md` (placeholders filled in), `references/pitfalls.md` and the run's `lessons.md`. Use Opus or Sonnet, not Haiku (it shortened text and faked "no changes"). Core rules, reasons in the brief: never add, shorten, paraphrase or translate text; reproduce click steps, covers and crops; built-in layouts first; provenance for every image, at the top of the slide.
+
+A test round before round 1 (`round-00`) is fine.
 
 ## Phase 3: the check loop
 
@@ -61,52 +52,57 @@ Each round, per deck:
 
 ```bash
 R=$WORK/round-NN
-$PY scripts/compare.py DECK.md $WORK $R               # export, page match, missing words, layout flags, cmp-NN.png, sheets
-node scripts/check_overflow.mjs DECK.md > $R/overflow.txt  # add --ignore=<selectors> from the project settings
+$PY scripts/compare.py DECK.md $WORK $R                 # export, build errors, KaTeX fonts, page match, lost words,
+                                                         # click steps, layout lint, compare images, sheets
+node scripts/check_overflow.mjs DECK.md > $R/overflow.txt   # --ignore=<selectors>; overflow, CLIPPED, UNDER ICON
+$PY scripts/check_images.py DECK.md $WORK > $R/images.txt   # raw (uncropped) pictures, rotation, stretching
 $PY scripts/provenance.py DECK.md > $R/provenance.txt
 ```
 
-Both scripts start their own private server (localhost, random port). Never take screenshots on a server the user is presenting from: Slidev syncs navigation, so you would move their slides.
+All scripts use their own private server; never take screenshots on a server the user presents from (Slidev syncs navigation).
 
-Then a **fresh reviewer** (an agent that did not make the slides, or you with fresh eyes if working alone) follows `references/review_brief.md`: it looks at every compare image, explains every missing word, and ends with `VERDICT: SHIP | ANOTHER ROUND` plus a MUST/SHOULD/NICE list. A **fixer** follows `references/fix_brief.md` for the MUST and SHOULD items. Look at a few compare images yourself every round — agents' self-reports overstate.
+`compare.py` reads marker comments in the deck (written by the converter, at the top of the slide): `<!-- ref: pNN -->` pins a slide to a page, `<!-- ref: pNN crop -->` the slide is a crop of that page, `<!-- ref: pNN partial -->` part of it is, `<!-- ref: none -->` a new slide, `<!-- typo: old -> new -->` a deliberate typo fix. It normalises ligatures, URLs and hyphenation, counts text in `v-click` blocks, and lists missing click steps.
 
-`compare.py` reads marker comments in the deck (the converter writes them, see the convert brief): `<!-- ref: pNN -->` pins a slide to a reference page, `<!-- ref: pNN crop -->` marks a slide whose text is inside a cropped image, `<!-- typo: old -> new -->` marks a deliberate typo fix. Crops and typo fixes are then not counted as missing words, so the count can really reach zero. It also runs `lint_layout.py`: absolute positioning, offsets, negative or big margins, `mix-blend`, fixed boxes. Every flag must be fixed or listed with a reason. Why: in an earlier run the fixer added `!mt-24`, `-mt-10` and `mix-blend-multiply` against the brief and did not report it; only a look at the slides found it.
+Then a **fresh reviewer** follows `references/review_brief.md` (every compare image, click states, covers, missing words, layout flags) and a **fixer** follows `references/fix_brief.md`.
 
-**Stop** when all hold, or when the round limit from Phase 0 is reached:
-1. `overflow.txt` has no `overflow`, `NOT RENDERED` or `broken image` lines;
-2. `report.md` has no really lost words (remaining ones explained by the reviewer: footer, page numbers) and no unexplained layout flags;
-3. the reviewer says SHIP;
-4. `provenance.py` reports no problems.
+**Spot checks by the main agent are mandatory** after every fix round: open at least the slides the fixer touched and every slide with click steps, covers or crops, in the compare images and, for click steps, in the browser or a `--with-clicks` export. In the runs, self-reports said "fixed" for lines that were still missing, and reviewers called an unrotated diagram "NICE".
+
+**Stop** when all hold, or at the round limit:
+1. `compare.py`: no build errors, KaTeX fonts present, no missing click steps, no really lost words (rest explained: footer, page numbers), no unexplained layout flags;
+2. `overflow.txt`: no `overflow`, `CLIPPED`, `UNDER ICON`, `NOT RENDERED`, `broken image`;
+3. `images.txt`: no `ERROR`; every `WARN` checked;
+4. `provenance.txt`: OK;
+5. the reviewer says SHIP and your spot checks agree.
+
+## Orchestration (more than one deck)
+
+- One **deck agent** per deck: it converts and later fixes (continue it by message, it keeps its context). Up to the number of agents the user allowed; start the next deck when one finishes.
+- One **fresh reviewer** per deck and round.
+- The **main agent** checks reference PDFs for all decks first (one question to the user), owns shared files (`style.css`, README, `public/shared/`, `vite.config.ts`, new slide classes — deck agents report what they need), does the spot checks, and keeps **`lessons.md`** in the run folder: every project-wide finding (a font problem, a class that does not work on two-cols, a parser trap) goes there at once and is sent to the running agents and given to every new one. In the WAST run this clearly lowered the error count of the later decks.
+- No agent commits; the main agent commits per deck after the user agrees.
+
+## Check mode (decks converted earlier)
+
+For decks made before these checks existed: run Phase 1 for the .pptx, then add what the checks need — `ref:` markers for crop slides and pinned slides, `typo:` markers for typo fixes that were made silently (compare with the reference text), provenance comments and `PROVENANCE.md` rows — then run Phase 3. Without markers the lost-words count is not readable (hundreds of "missing" words).
 
 ## Phase 4: final report and handover
 
-1. Run one last `compare.py` round as the final PDF-against-PDF check.
-2. Give the user:
-   - the contact sheets (`sheet-NN.png`: reference left, Slidev right, all pages) — the fastest way for them to see everything;
-   - a short report: slide counts; deliberate differences and why (crops, formulas rewritten in KaTeX, layout changes); exceptions to the layout rules with reasons; what is still open if the round limit was hit; whether the reference was a LibreOffice render;
-   - a section **"For you to decide"**: every typo fix (old → new), stale content that was kept verbatim (old semesters, dates, calendars, break times), visual elements that were dropped (backgrounds, decorations the project has no class for), images with unclear rights.
-3. If the project settings section was missing or incomplete, add it to the project README (style, `--ignore` selectors, image folders, reference PDF location).
+1. One last `compare.py` round.
+2. Give the user the contact sheets (`sheet-NN.png`) and a short report: slide counts; deliberate differences (crops, formulas rewritten, layout changes); exceptions to the layout rules with reasons; what is open if the round limit was hit; whether the reference was a LibreOffice render; a section **"For you to decide"**: typo fixes (old → new), stale content kept verbatim (semesters, dates, break times), dropped visual elements, images that are not free.
+3. Update the project settings section in the README.
 4. Commit only after the user agrees.
-
-## Pitfalls (short)
-
-- `text-xl` is 20 px — smaller than the ~21 px base, not bigger.
-- Base Slidev CSS beats utility classes on tables and blockquotes; use the `!` prefix. The default theme draws a grey line under every table row (on `tr`, not `td`): an HTML table used for layout (arrows, labels beside a table) needs `[&_tr]:border-0` or `class="!border-0"` on each `tr`, else lines cross the whole slide.
-- Typographic quotes in `class=”…”` silently disable the class.
-- The default theme greys out the first paragraph after a title; the project may need one CSS line.
-- KaTeX does not render inside raw HTML paragraphs.
-- `<-` in R code may become a ligature arrow with some fonts.
-- Do not `npm install` inside synced folders (iCloud, Dropbox); use a shared Slidev runtime.
-- Speaker notes become HTML comments at the end of the slide; keep them.
 
 ## Files
 
-- `scripts/extract.py` — PPTX → dump.md, slides.json, media/
-- `scripts/reference.py` — check and render the reference PDF
-- `scripts/compare.py` — one check round (export, page match, missing words, compare images, report)
-- `scripts/check_overflow.mjs` — overflow, broken images, small text, underfilled slides
-- `scripts/provenance.py` — image provenance check
-- `scripts/lint_layout.py` — layout tricks per slide (run by compare.py)
-- `scripts/deck.py` — reads a Slidev deck into exported slides and marker comments (`python scripts/deck.py DECK.md` lists them)
+- `scripts/extract.py` — PPTX → dump.md, slides.json, pictures.json, media/ (crops applied, covers, marks, click steps, embedded PDFs)
+- `scripts/reference.py` — check and render the reference PDF; slide box
+- `scripts/crop_ref.py` — crop a region of a reference page in slide % (footer corner white, near-white cleaned)
+- `scripts/compare.py` — one check round
+- `scripts/check_overflow.mjs` — overflow, clipped content, text under icons, broken images, sizes
+- `scripts/check_images.py` — uncropped / rotated / stretched pictures, matched by content
+- `scripts/provenance.py` — image provenance (follows `src:` imports)
+- `scripts/lint_layout.py` — layout tricks, class on two-cols, YAML-tag layoutClass (run by compare.py)
+- `scripts/deck.py` — deck parser and marker warnings (`python scripts/deck.py DECK.md`)
 - `references/convert_brief.md`, `review_brief.md`, `fix_brief.md` — briefs for agents
+- `references/pitfalls.md` — Slidev and PowerPoint traps from real runs
 - `references/provenance.md` — provenance format and rules

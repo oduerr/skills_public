@@ -12,6 +12,8 @@
 //   SMALL TEXT        body text below 15px (base ~21px)
 //   ROOM              text below 18px while the slide is less than 80% filled
 //   UNDERFILLED       content ends above 65% of the height
+//   CLIPPED           content cut off inside a column, cell or box (overflow hidden)
+//   UNDER ICON        text under a decorative ::after/::before icon (e.g. exercise pencil)
 // Slidev and playwright-chromium are taken from $SLIDEV_RUNTIME, the deck's
 // node_modules, or ~/.local/share/slidev-runtime.
 import { spawn } from 'node:child_process'
@@ -58,8 +60,9 @@ try {
     await page.waitForTimeout(500)
     const found = await page.evaluate((IGNORE) => {
       const out = []
-      const layout = [...document.querySelectorAll('.slidev-page')]
-        .map(p => p.querySelector('.slidev-layout'))
+      const pages = [...document.querySelectorAll('.slidev-page')].filter(p => p.getBoundingClientRect().height > 0)
+      // layout: none has no .slidev-layout; use the page content then
+      const layout = pages.map(p => p.querySelector('.slidev-layout') || p.firstElementChild)
         .find(l => l && l.getBoundingClientRect().height > 0)
       if (!layout) return ['NOT RENDERED (compile error or missing image?)']
       const box = layout.getBoundingClientRect()
@@ -76,8 +79,47 @@ try {
           break
         }
       }
+      // clipped: content cut off by a column, grid cell, table cell or box with overflow hidden/auto
+      const clipped = new Set()
+      for (const el of layout.querySelectorAll('*')) {
+        if (el.closest('.katex') && !el.classList.contains('katex')) continue
+        if (IGNORE.some(sel => el.closest(sel))) continue
+        const r = el.getBoundingClientRect()
+        if (r.width === 0 || r.height === 0) continue
+        const cs = getComputedStyle(el)
+        if (/hidden|clip|auto|scroll/.test(cs.overflowY + cs.overflowX) && el !== layout &&
+            (el.scrollHeight > el.clientHeight + 3 || el.scrollWidth > el.clientWidth + 3)) {
+          const txt = (el.innerText || el.tagName).slice(0, 40).replace(/\s+/g, ' ')
+          clipped.add(`CLIPPED ${el.tagName.toLowerCase()} "${txt}" content ${el.scrollHeight - el.clientHeight}px taller / ${el.scrollWidth - el.clientWidth}px wider than its box`)
+        }
+      }
+      for (const c of [...clipped].slice(0, 3)) out.push(c)
+      // text under a decorative icon of the layout (e.g. a pencil drawn with ::after)
+      for (const pseudo of ['::after', '::before']) {
+        const ps = getComputedStyle(layout, pseudo)
+        if (ps.content === 'none' || ps.position !== 'absolute' || ps.display === 'none') continue
+        const lb = layout.getBoundingClientRect()
+        const w = parseFloat(ps.width) || 0, h = parseFloat(ps.height) || 0
+        if (!w || !h) continue
+        const top = ps.top !== 'auto' ? lb.top + parseFloat(ps.top) : lb.bottom - parseFloat(ps.bottom) - h
+        const left = ps.left !== 'auto' ? lb.left + parseFloat(ps.left) : lb.right - parseFloat(ps.right) - w
+        let hit = null
+        for (const el of layout.querySelectorAll('*')) {
+          for (const n of el.childNodes) {
+            if (n.nodeType !== 3 || !n.textContent.trim()) continue
+            const range = document.createRange(); range.selectNodeContents(n)
+            for (const r of range.getClientRects()) {
+              if (r.right > left && r.left < left + w && r.bottom > top && r.top < top + h) { hit = n.textContent.trim(); break }
+            }
+            if (hit) break
+          }
+          if (hit) break
+        }
+        if (hit) out.push(`UNDER ICON text "${hit.slice(0, 40)}" lies under the layout's ${pseudo} icon`)
+      }
       // fill / text-size heuristics (canvas px; base text is ~21px)
-      if (!/cover|center|section|intro|end|fact|quote|statement/.test(layout.className)) {
+      if (!/cover|center|section|intro|end|fact|quote|statement|layout-image|slidev-layout image|image-left|image-right|iframe/.test(layout.className) &&
+          !/\bimage\b/.test(layout.className)) {
         let bottom = 0, minFont = 99, textChars = 0
         for (const el of layout.querySelectorAll('*')) {
           if (el.closest('.source') || el.tagName === 'H1') continue

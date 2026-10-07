@@ -1,42 +1,50 @@
 # Brief: convert PowerPoint slides to Slidev
 
-You convert one deck (or a given slide range) into a Slidev Markdown file. The author will teach from it, so the content must stay exactly as it is, and the slides must look like a clean version of the original.
+You convert one deck into a Slidev Markdown file. The author will teach from it: the content must stay exactly as it is, answers must stay hidden until the click that reveals them, and the slides must look like a clean version of the original.
 
-Fill in before handing this to an agent: `<WORK>` (work folder), `<DECK_MD>` (target file), `<IMG_DIR>` (e.g. `public/<deck>/`), `<INTERN_DIR>` (e.g. `public/_intern/<deck>/`), `<STYLE>` (what the project's style decisions are: theme, fonts, base size, existing CSS helpers or "default theme, no custom CSS"), `<LANG>`.
+Fill in before handing this to an agent: `<WORK>` (your own work folder), `<DECK_MD>`, `<IMG_DIR>` (`public/<deck>/`), `<INTERN_DIR>` (`public/_intern/<deck>/`), `<STYLE>` (theme, fonts, base size, slide classes, or "default theme, no custom CSS"), `<LANG>`, `<LESSONS>` (path of the run's lessons.md).
+
+Read first: `references/pitfalls.md` and `<LESSONS>`.
 
 ## Inputs
-- `<WORK>/dump.md`: per visible slide: shapes with position (% of slide), text, tables, images, notes, links, animations, and a `raw text:` line with all text in the slide XML.
-- `<WORK>/media/`: the images (`sNN_<id>.<ext>`, NN = visible slide number).
-- `<WORK>/ref/p-NN.png`: the reference page (low resolution) — LOOK at it for every slide; it shows the real layout. `<WORK>/ref_hi/p-NN.png`: 200 dpi, for crops. `<WORK>/reference.json` maps slide numbers to page numbers (hidden slides are missing in the PDF, so page ≠ slide).
+- `<WORK>/dump.md`: per visible slide: shapes with position (% of slide), text, tables, pictures, and:
+  - `raw text:` — all text in the slide XML, authoritative (formula text, math boxes);
+  - `CROPPED … / ROTATED … / STRETCHED …` on pictures — `media/` files are already cropped; never use `*.raw.*` files (uncropped originals have shown private browser tabs, quiz answers, extra data);
+  - `COVER` — a box over a picture or formula, often hiding an answer until a click;
+  - `MARK` — a circle, frame or arrow drawn on a picture;
+  - `CLICK n:` — what appears or disappears on each click;
+  - `EMBEDDED PDF extracted` — use that PNG (LibreOffice renders these empty);
+  - notes, links.
+- `<WORK>/ref/p-NN.png` (low res) and `ref_hi/p-NN.png` (200 dpi): the reference pages. `reference.json` maps slides to pages (page ≠ slide: hidden slides are missing) and has `slide_box_pt`.
+- `<WORK>/media/`: pictures (`sNN_<id>.<ext>`, NN = visible slide number).
 
 ## How to convert a slide
 1. Read the slide block in dump.md AND look at the reference page.
-2. Compare the `raw text:` line with the shape list. Words that appear only in the raw text (text in math or special objects) still belong on the slide.
-3. Rebuild it with Markdown first, built-in layouts second, a little HTML last:
-   - bullets → Markdown lists (keep levels); tables → Markdown tables; R/Python code → fenced code blocks; links stay links; formulas → KaTeX `$…$` / `$$…$$` (rewrite OLE / image formulas from the reference page).
-   - side by side → built-in layouts: `two-cols` / `two-cols-header` (has a `::bottom::` slot), `image-left` / `image-right` (with `backgroundSize: contain`), `image` for a full-slide picture, `section`, `cover`. For a left-to-right sequence (timeline, prompt → result) use a Markdown table or a one-row HTML table.
-   - images: `<img src="/<deck>/x.png" class="h-72 mx-auto">` — always give a height (`h-60` … `h-96`) or `max-h-[..]`.
-4. **No absolute positioning** (`absolute`, `top-[..]`, `left-[..]`, fixed px boxes), except one source or credit line per slide. Why: absolute boxes do not move with the content; when text or fonts change, they drift over other content, and every later fix gets harder. If you think a slide really needs it, do it and list it in your report.
-5. **No custom grid divs or new CSS classes** unless `<STYLE>` provides them. Built-in layouts are understood by every later editor and agent.
-6. Things that are not usable as an image file (WMF/EMF, charts, SmartArt, arrows or labels over pictures, rotated text): crop the region from `ref_hi/p-NN.png` with Pillow, using the % position from dump.md. Check the crop edges (do not cut a text line in half). RGBA/TIFF: composite onto white before saving as PNG. If a slide is mostly graphics, cropping the whole content area below the title is fine; prefer real text where it is reasonable.
-7. Copy only the images you use into `<IMG_DIR>`. For each image add provenance (comment next to it AND a row in `<IMG_DIR>/PROVENANCE.md`) following `references/provenance.md`. Images with rights `unclear` go to `<INTERN_DIR>`, with their row in `<INTERN_DIR>/PROVENANCE.md`.
-8. Animations: `v-click` only where it clearly helps (quiz answers, step-by-step reveals).
-9. Speaker notes: keep them verbatim as an HTML comment at the end of the slide.
-10. **Visual signals** that recur across slides (a pencil on exercise slides, a blackboard background or a small blackboard icon for "go to the board", a code-style background) carry meaning for the teacher. Map them to the project's slide classes from `<STYLE>`. If the project has no class for a recurring signal, do not drop it silently: report it, and propose a class (CSS only if possible, so there is no image-rights question).
-11. **Break slides** (title "Pause …"): take over title and text verbatim, including times and semesters. No layout work, no reference page needed.
-12. **Markers** (read by the check scripts, invisible on the slide). Put them at the TOP of the slide: after the closing `---` of the slide's frontmatter, or, on a slide without frontmatter, after a BLANK line below the `---` separator. Two traps: at the end of a slide, Slidev shows the last comment as speaker notes; directly on the line after `---`, Slidev reads `<!-- typo: A -> B -->` as YAML frontmatter and swallows whole slides.
-   - `<!-- ref: pNN -->` when a slide's text differs a lot from its reference page (e.g. rebuilt as a table), so the comparison pairs it correctly;
-   - `<!-- ref: pNN crop -->` when the slide is mainly a crop of reference page NN (its words are in the image);
-   - `<!-- typo: old -> new -->` for every typo you fix, one per fix; use quotes for more than one word: `<!-- typo: "Insbesonder e" -> "Insbesondere" -->`.
-13. Skip slide-number boxes and footer boilerplate. Videos: placeholder line `*(Video: <name>)*` unless told otherwise.
+2. Rebuild it: Markdown first, built-in layouts second, a little HTML last.
+   - bullets → lists (keep levels); tables → Markdown tables; code → fenced blocks; links stay links; formulas → KaTeX (rewrite OLE/picture formulas from the reference page);
+   - side by side → `two-cols-header` (title above, `::left::`, `::right::`, `::bottom::`), `image-left` / `image-right` (`backgroundSize: contain`), `image`, `section`, `cover`; left-to-right sequences → a Markdown table or a one-row HTML table with `[&_tr]:!border-0`;
+   - pictures: `<img src="/<deck>/x.png" class="h-72 mx-auto">` — always a height or `max-h-[..]`; reproduce rotation (`rotate-90`) and stretching (fixed box + `!object-fill`).
+3. **Click steps** (`CLICK n:` lines): reproduce every one with `v-click` / `<v-clicks>` / `v-after` / `v-switch`. A shape that appears on a click is hidden until then; a COVER that disappears on a click hides what is under it until then. If the click changes something inside a picture (annotations on a plot, a cover over part of a screenshot): render variants of the slide without the animated shapes (python-pptx: delete them, save, render with LibreOffice), crop all variants identically with `scripts/crop_ref.py`, stack them (`<div class="grid [&>img]:[grid-area:1/1]">`) and reveal with `v-click`. Multi-step `v-switch` may render nothing in the plain export: check with `--with-clicks`.
+4. **COVER without click**: reproduce it (the original hides something on purpose). **MARK**: reproduce it — crop the region from the reference page if it cannot be rebuilt.
+5. **No absolute positioning** (`absolute`, offsets, fixed px boxes, inline `style=` positions), except one source or credit line per slide. Why: absolute boxes do not move with the content; when text or fonts change they drift over other content. If a slide really needs it, do it and list it.
+6. **No custom grid divs or new CSS classes** unless `<STYLE>` provides them. Slide classes (exercise, code, blackboard) on `two-cols*` slides go into `layoutClass:` (quoted when it starts with `!`), not `class:`.
+7. Not usable as an image file (WMF/EMF without embedded PDF, charts, SmartArt, rotated text, arrows over pictures): crop from the reference page with `scripts/crop_ref.py <WORK> <page> <x> <y> <w> <h> out.png` (slide %, from dump.md). It paints the page-number corner white instead of cutting it away and cleans an off-white background. Check the crop edges. A slide that is mostly graphics may be cropped whole below the title; prefer real text where reasonable.
+8. Copy only the pictures you use into `<IMG_DIR>`. Provenance for each (comment at the TOP of the slide AND a row in `<IMG_DIR>/PROVENANCE.md`), see `references/provenance.md`. Not free (`unclear`, `publisher`) → `<INTERN_DIR>`, row in its PROVENANCE.md.
+9. Speaker notes: verbatim, as the LAST comment of the slide. A slide without notes whose last comment would be a marker or provenance gets an empty `<!-- -->` at the end.
+10. **Visual signals** that recur (exercise pencil, blackboard, code background) → the project's slide classes. If a class is missing, report it to the main agent; do not drop the signal.
+11. **Break slides** (title with "Pause"/"Break"): title and text verbatim, including times and semesters; no layout work.
+12. **Markers** for the check scripts, at the TOP of the slide (after the frontmatter, or after a BLANK line below `---`):
+    - `<!-- ref: pNN -->` slide differs a lot from its page (e.g. rebuilt as a table);
+    - `<!-- ref: pNN crop -->` slide is mainly a crop of page NN; `<!-- ref: pNN partial -->` part of it is;
+    - `<!-- ref: none -->` a slide without reference page;
+    - `<!-- typo: old -> new -->` per typo fix; quotes for several words.
+13. Skip slide-number boxes and footer boilerplate. Videos: placeholder `*(Video: <name>)*` unless told otherwise.
 
-## Text: the hard rule
-Never shorten, summarise, paraphrase, translate or "improve" text. Every word stays. Fix only obvious typos, mark each with a `<!-- typo: old -> new -->` comment, and list them. Why: these are the author's teaching words; a shortened sentence is a content change the author has to find and undo.
-
-## KaTeX pitfall
-KaTeX does not render inside raw HTML like `<p>…$x$…</p>`. Put math in Markdown paragraphs (inside a `<div>`, leave blank lines around the Markdown).
+## Text: the hard rules
+- Never shorten, summarise, paraphrase, translate or "improve" text; never add words (also not when a reviewer suggests it); never complete text that is cut off in the original; never "correct" words of another language (German on an English slide). Fix only obvious typos, each with a `typo:` marker. Why: these are the author's teaching words; every change is something the author has to find and undo.
+- Never drop parts of a figure (axis titles, ticks, labels) to solve an overlap.
 
 ## Before you report
-- Run `node <SKILL>/scripts/check_overflow.mjs <DECK_MD>` once and fix clear overflow. A layout loop follows, so do not spend more than one fix round.
-- Run `python <SKILL>/scripts/provenance.py <DECK_MD>` and `python <SKILL>/scripts/lint_layout.py <DECK_MD>`; fix flags or give the reason.
-- Report: file written, number of slides, slides with crops, exceptions to the layout rules (with reasons), typos fixed (old → new), stale content you kept verbatim (old dates, semesters, calendars), visual elements you dropped, images with unclear rights, open problems.
+- `$PY <SKILL>/scripts/compare.py <DECK_MD> <WORK> <WORK>/round-00`, `node <SKILL>/scripts/check_overflow.mjs <DECK_MD>`, `$PY <SKILL>/scripts/check_images.py <DECK_MD> <WORK>`, `$PY <SKILL>/scripts/provenance.py <DECK_MD>`. Fix clear problems once; a check loop follows.
+- Look yourself at every slide with CLICK, COVER, CROPPED or a crop from the reference, in its final and its first click state.
+- Report: file, slide count, slides with crops, click steps reproduced (and how), exceptions to the layout rules with reasons, typo fixes (old → new), stale content kept verbatim, visual elements dropped, pictures that are not free, open problems. Report only what you checked.

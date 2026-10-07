@@ -19,6 +19,7 @@ images) and OUTDIR/ref_hi/p-NN.png (200 dpi, for crops).
 Needs: poppler (pdftotext, pdftoppm, pdfinfo).
 """
 import json
+from pathlib import Path
 import os
 import re
 import subprocess
@@ -41,9 +42,12 @@ def page_text(pdf, n):
 
 
 def score(slide, text):
-    """How well a page text fits a slide: title found at the top, plus word overlap."""
+    """How well a page text fits a slide: title found at the top, plus word overlap.
+    Slides without text (picture slides) fit pages with (almost) no text."""
     t = norm(slide["title"])
     head = norm(" ".join(text.splitlines()[:8]))
+    if not norm(slide["text"]) and len(norm(text).split()) <= 3:
+        return 0.9
     s = 0.0
     if t and t in head:
         s += 1.0
@@ -84,10 +88,35 @@ def align(score, S, P, gap=0.6):
     return pairs[::-1]
 
 
+def slide_box(pdf, ratio=None):
+    """Where the slide sits on the PDF page (PowerPoint and LibreOffice put a 4:3 or 16:9
+    slide onto A4 with margins). Estimated from the union of non-white pixels over all
+    pages, so every agent does not have to measure it again. Returns [x0, y0, x1, y1] in pt."""
+    try:
+        import tempfile
+        from PIL import Image, ImageChops
+        with tempfile.TemporaryDirectory() as d:
+            subprocess.run(["pdftoppm", "-png", "-r", "20", pdf, f"{d}/p"], check=True, capture_output=True)
+            files = sorted(Path(d).glob("p-*.png"))
+            box = None
+            for f in files:
+                im = Image.open(f).convert("L")
+                bg = Image.new("L", im.size, 255)
+                b = ImageChops.difference(im, bg).point(lambda v: 255 if v > 12 else 0).getbbox()
+                if b:
+                    box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3]))
+            if not box:
+                return None
+            scale = 72 / 20
+            return [round(v * scale, 1) for v in box]
+    except Exception:
+        return None
+
+
 def main():
     index_file, pdf, out = sys.argv[1:4]
     render = "--render" in sys.argv
-    brk = sys.argv[sys.argv.index("--break-pattern") + 1] if "--break-pattern" in sys.argv else r"^\s*(pause|break)\b"
+    brk = sys.argv[sys.argv.index("--break-pattern") + 1] if "--break-pattern" in sys.argv else r"\b(pause|break)\b"
     slides = json.load(open(index_file))
     n = page_count(pdf)
     texts = [page_text(pdf, p) for p in range(1, n + 1)]
@@ -99,7 +128,7 @@ def main():
     matched_p = {p for _, p in pairs}
     problems, breaks = [], []
     for s in slides:
-        is_break = bool(re.search(brk, s["title"], re.I))
+        is_break = bool(re.search(brk, s["title"], re.I)) and len(s["title"]) < 70
         if is_break:
             breaks.append({"slide": s["slide"], "original": s["original"], "title": s["title"],
                            "in_pdf": s["slide"] in matched_s})
@@ -109,13 +138,33 @@ def main():
         if p not in matched_p:
             first = next((l.strip() for l in texts[p - 1].splitlines() if l.strip()), "")
             problems.append(f"page {p} '{first[:60]}' has no slide in the .pptx")
+    # a slide "missing" and a page "extra" with the same title = order differs, not content
+    miss = {norm(s["title"]): s["slide"] for s in slides if s["slide"] not in matched_s and s["title"]}
+    for p in range(1, n + 1):
+        if p not in matched_p:
+            head = norm(" ".join(texts[p - 1].splitlines()[:6]))
+            for t, sno in miss.items():
+                if t and t in head:
+                    problems.append(f"slide {sno} '{t[:40]}' looks like page {p}: order differs between .pptx and PDF")
     match = "ok" if not problems else "mismatch"
+    warn = []
+    if slides and slides[0].get("source_mtime") and os.path.getmtime(pdf) + 60 < slides[0]["source_mtime"]:
+        import datetime
+        d = lambda t: datetime.date.fromtimestamp(t).isoformat()
+        warn.append(f"the PDF ({d(os.path.getmtime(pdf))}) is older than the .pptx ({d(slides[0]['source_mtime'])}): "
+                    "it may miss later changes even where pages match")
 
     os.makedirs(out, exist_ok=True)
+    box = slide_box(pdf)
     json.dump({"pdf": os.path.abspath(pdf), "pages": n, "slides": S, "match": match,
-               "map": pairs, "problems": problems, "break_slides": breaks},
+               "map": pairs, "problems": problems, "warnings": warn, "break_slides": breaks,
+               "slide_box_pt": box},
               open(f"{out}/reference.json", "w"), indent=1)
     print(f"reference: {pdf}\n  {n} pages, {S} visible slides, match: {match}")
+    for w in warn:
+        print("  WARNING", w)
+    if box:
+        print(f"  slide box on the page (pt, x0 y0 x1 y1): {box} — crops: see crop_ref.py")
     for x in problems[:30]:
         print("  -", x)
     if len(problems) > 30:

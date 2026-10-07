@@ -4,7 +4,7 @@ Lecture slides collect images from many places over the years: own plots, book c
 
 ## Two places, same content
 
-1. **Comment in the deck**, directly after the image, so the author sees it while editing:
+1. **Comment in the deck**, at the TOP of the slide (after the frontmatter, or after a blank line below `---`), so the author sees it while editing. Not at the end: Slidev shows the last comment of a slide as speaker notes (in one run 145 slides showed provenance in the presenter view). A picture-only slide ends with an empty `<!-- -->`.
    ```html
    <img src="/03_wkeit/elephant.jpg" class="h-72 mx-auto">
    <!-- provenance: elephant.jpg | 03_wkeit.pptx slide 11 (media s11_7.jpg) | Steve Jurvetson, "The elephant in the room", Wikimedia Commons | free | CC BY 2.0 -->
@@ -26,13 +26,14 @@ Lecture slides collect images from many places over the years: own plots, book c
 - **rights**: exactly one of
   - `free` – a known free license or public domain (CC0, CC BY, CC BY-SA, public domain, official logos used as allowed),
   - `own` – made by the author (own plots, own diagrams, screenshots of own code),
+  - `publisher` – from the author's own book or paper; the publisher holds the rights (not free);
   - `unclear` – everything else, including "found on the web" and book covers.
 - **license**: e.g. `CC BY 2.0`, `CC0`, `public domain`, `–`.
 - **credit on slide**: `yes` if the slide shows the attribution the license needs, else empty.
 
 ## Rules
 
-- **Unclear counts as not free.** Put such images into the internal folder of the deck (default `public/_intern/<deck>/`), which a public version leaves out. Do not guess a license to make an image "free".
+- **Unclear and publisher count as not free.** Put such images into the internal folder of the deck (default `public/_intern/<deck>/`), which a public version leaves out. Do not guess a license to make an image "free".
 - **Attribution:** a CC BY image needs a visible credit on the slide (author, title or source, license). Keep the original credit line or add one as the slide's single source line.
 - **Crops** of the reference page inherit the rights of what is in them: a crop of an own diagram is `own`, a crop that contains a photo is that photo's rights.
 - **Do not search the web** for licenses unless the user asks. Record what the slide and notes say, and list the unclear images in the final report so the author can decide.

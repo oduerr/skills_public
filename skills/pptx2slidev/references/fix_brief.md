@@ -13,12 +13,15 @@ Fill in: `<DECK_MD>`, `<ROUND_DIR>`, `<LIST>` (the reviewer's MUST and SHOULD it
 6. Use straight quotes in HTML attributes (`class="…"`). Typographic quotes make the class silently fail.
 
 ## Hard rules
+- Never add words, also not when the reviewer suggests wording; never drop parts of a figure to solve an overlap.
 - Never shorten, paraphrase or remove text. If it does not fit, change size or layout.
 - No absolute positioning except one source/credit line per slide. No new custom CSS unless `<STYLE>` allows it.
 - Do not touch slides that are not in your list, files other than `<DECK_MD>`, or the project's CSS/layouts.
 - Keep speaker notes and provenance comments.
 
 ## Verify your own work
+For every item you call fixed, look at the result yourself (compare image, or the browser for click states). The main agent will spot-check; a "fixed" that is not fixed costs a whole round.
+
 Run `node <SKILL>/scripts/check_overflow.mjs <DECK_MD>` and `python <SKILL>/scripts/lint_layout.py <DECK_MD>` and read the lines for your pages. Any layout flag you added must be removed or reported as an exception with its reason — an unreported flag counts as a false report. Every overflow on your pages must be gone (at most 3 runs). Do not claim a fix you did not check.
 
 ## Report
