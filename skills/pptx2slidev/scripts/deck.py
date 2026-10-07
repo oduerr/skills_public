@@ -9,8 +9,10 @@ Marker comments the converter writes into a slide (read here):
   <!-- ref: p34 crop -->     ... and is (mainly) a crop of that page, so its text is in the image
   <!-- typo: Celcius -> Celsius -->   a deliberate typo fix (the old word is not "lost")
   <!-- typo: "Insbesonder e" -> "Insbesondere" -->   quotes for more than one word
-Put markers at the TOP of the slide (right after the frontmatter): Slidev uses the
-LAST comment of a slide as speaker notes, so a marker at the end would show up there.
+Put markers at the TOP of the slide: after the frontmatter, or after a blank line below
+the `---` separator. At the end, Slidev shows them as speaker notes; directly after
+`---`, Slidev reads them as YAML frontmatter and swallows slides. `python deck.py DECK.md`
+warns about markers in both places.
 """
 import re
 from pathlib import Path
@@ -100,8 +102,27 @@ def exported(path):
     return [s for s in read_deck(path) if not s["hidden"]]
 
 
+def marker_warnings(path, _depth=0):
+    """Markers that Slidev would misread: on the first line after a '---' slide
+    separator (read as YAML frontmatter), or at the very end of a slide (the
+    comment at the end of a slide becomes the speaker notes)."""
+    warn = []
+    path = Path(path)
+    for fm, body, start in _split(path.read_text().splitlines()):
+        d = _fm_dict(fm)
+        if "src" in d and _depth < 5:
+            warn += marker_warnings((path.parent / d["src"]).resolve(), _depth + 1)
+        if not fm and body and re.match(r"\s*<!--\s*(ref|typo):", body[0]):
+            warn.append(f"{path.name}:{start}: marker directly after '---' (Slidev reads it as frontmatter); add a blank line before it")
+        if re.search(r"<!--\s*(ref|typo):[^>]*-->\s*$", "\n".join(body)):
+            warn.append(f"{path.name}:{start}: marker at the end of the slide (shown as speaker notes); move it to the top")
+    return warn
+
+
 if __name__ == "__main__":
     import sys
+    for w in marker_warnings(sys.argv[1]):
+        print("WARNING", w)
     for k, s in enumerate(exported(sys.argv[1]), 1):
         flags = (f" ref=p{s['pin']}" if s["pin"] else "") + (" crop" if s["crop"] else "")
         print(f"{k:3d} {Path(s['file']).name}:{s['line']} {s['title'][:60]}{flags}")

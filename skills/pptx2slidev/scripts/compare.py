@@ -31,7 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from reference import align, page_count, page_text  # noqa: E402
-from deck import exported  # noqa: E402
+from deck import exported, marker_warnings  # noqa: E402
 
 WORD = re.compile(r"[A-Za-zÄÖÜäöüßÀ-ÿ]{3,}")
 
@@ -72,8 +72,11 @@ def main():
     stext = [page_text(pdf, p) for p in range(1, sn + 1)]
 
     slides = exported(deck)
+    for w in marker_warnings(deck):
+        print("WARNING", w)
     if len(slides) != sn:
-        print(f"note: deck has {len(slides)} exported slides but the PDF has {sn} pages; markers are ignored")
+        print(f"WARNING: the deck has {len(slides)} slides but the export has {sn} pages. Slides were lost or merged "
+              f"(often a marker or text right after '---' read as frontmatter). Fix this first; markers are ignored in this round.")
         slides = [{"pin": None, "crop": False, "typos": [], "title": ""} for _ in range(sn)]
     pin_of = {k: s["pin"] for k, s in enumerate(slides) if s["pin"]}
     rw, sw = [words(t) for t in rtext], [words(t) for t in stext]
