@@ -9,6 +9,7 @@ so renamed or re-encoded files are found too) against the extracted pictures:
   ERROR uncropped   the deck shows the RAW picture although PowerPoint cropped it.
                     Crops often hide private content (browser tabs), quiz answers or
                     extra data. Use the cropped file from media/.
+  WARN  small crop  raw picture, but PowerPoint crops less than 8% on every side
   WARN  rotated     PowerPoint rotated the picture; check the slide (CSS rotate-*).
   WARN  stretched   PowerPoint showed it stretched; check the slide.
   INFO  no match    image not found in the .pptx (crop of the reference page, new image)
@@ -30,19 +31,25 @@ IMG = [r'<img[^>]+src="([^"]+)"', r"!\[[^\]]*\]\(([^)\s]+)", r"^(?:image|backgro
 
 
 def sig(path):
+    """Aspect ratio and a contrast-normalised 32x32 grey thumbnail (mean 0, length 1),
+    so mostly-white pictures do not look alike just because they are white."""
     im = Image.open(path)
     im.load()
     w, h = im.size
-    g = im.convert("L").resize((24, 24))
-    data = g.get_flattened_data() if hasattr(g, "get_flattened_data") else g.getdata()
-    return w / h if h else 1.0, list(data)
+    g = im.convert("L").resize((32, 32))
+    data = list(g.get_flattened_data() if hasattr(g, "get_flattened_data") else g.getdata())
+    m = sum(data) / len(data)
+    v = [x - m for x in data]
+    n = sum(x * x for x in v) ** 0.5 or 1.0
+    return w / h if h else 1.0, [x / n for x in v]
 
 
 def dist(a, b):
+    """0 = same picture. 1 - correlation of the thumbnails, plus the aspect-ratio difference."""
     ra, pa = a
     rb, pb = b
-    pix = sum(abs(x - y) for x, y in zip(pa, pb)) / (len(pa) * 255)
-    return pix + 2 * abs(ra / rb - 1)
+    corr = sum(x * y for x, y in zip(pa, pb))
+    return (1 - corr) + 2 * abs(ra / rb - 1)
 
 
 def project_public(deck, arg):
@@ -92,7 +99,7 @@ def main():
         except Exception:
             continue
         scored = sorted(((dist(sg, c[2]), c) for c in cands), key=lambda x: x[0])
-        if not scored or scored[0][0] > 0.25:
+        if not scored or scored[0][0] > 0.15:
             print(f"INFO  no match  {src}")
             continue
         d, (kind, p, _) = scored[0]
@@ -102,6 +109,10 @@ def main():
             crop_d = next((x for x, c in scored if c[0] == "crop" and c[1] is p), 9)
             # the same picture may be used uncropped on another slide: then it is fine
             uncropped_elsewhere = any(c[0] == "pic" and x - d < 0.02 for x, c in scored)
+            if crop_d - d > 0.02 and not uncropped_elsewhere and max(abs(c) for c in p["crop"]) < 8:
+                print(f"WARN  small crop {src} (deck slides {sorted({k for k, _ in uses})}): raw picture, PowerPoint crops only "
+                      f"L/T/R/B={'/'.join(f'{c:.0f}' for c in p['crop'])}%; check the edge")
+                continue
             if crop_d - d > 0.02 and not uncropped_elsewhere:
                 errors += 1
                 print(f"ERROR uncropped {src} (deck slides {slides}) = RAW of pptx slide {p['slide']} picture; "
