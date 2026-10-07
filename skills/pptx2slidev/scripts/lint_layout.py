@@ -7,7 +7,10 @@ Flags, per exported slide:
                source/credit line: lines with class "source" or a credit/source text are skipped)
   offset       top-/left-/right-/bottom- arbitrary offsets (top-[..], left-12, ml-[38%])
   neg-margin   negative margins (-mt-4, -ml-[2rem])
-  big-margin   margins of 10 or more (mt-12, !mt-24, mb-16)
+  big-margin   vertical margins of 10 or more (mt-12, !mt-24, mb-16)
+  big-indent   horizontal margins of 16 or more (ml-24, mx-36); a small indent
+               like the original (ml-4 … ml-12) is fine, but a nested list or a
+               built-in layout is better
   blend        mix-blend-* (often used to hide an overlap)
   fixed-box    fixed width/height boxes in px on divs (w-[600px], h-[300px] on <div>)
   css          <style> blocks inside the deck
@@ -26,7 +29,8 @@ RULES = [
     ("absolute", re.compile(r"(?<![\w-])absolute(?![\w-])|position:\s*absolute")),
     ("offset", re.compile(r"(?<![\w-])!?(?:top|left|right|bottom|inset)-(?:\[[^\]]+\]|\d+)|(?<![\w-])!?m[lr]-\[\d+%\]")),
     ("neg-margin", re.compile(r"(?<![\w])!?-m[tblrxy]?-(?:\[[^\]]+\]|\d+)")),
-    ("big-margin", re.compile(r"(?<![\w-])!?m[tblrxy]?-(?:[1-9]\d)(?![\w])")),
+    ("big-margin", re.compile(r"(?<![\w-])!?m[tby]?-(?:[1-9]\d)(?![\w])")),
+    ("big-indent", re.compile(r"(?<![\w-])!?m[lrx]-(?:1[6-9]|[2-9]\d)(?![\w])")),
     ("blend", re.compile(r"mix-blend-")),
     ("fixed-box", re.compile(r"<div[^>]*class=\"[^\"]*(?<![\w-])[wh]-\[\d+px\]")),
     ("css", re.compile(r"<style")),
