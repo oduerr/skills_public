@@ -35,7 +35,7 @@ python scripts/reference.py $WORK/slides.json ref.pdf $WORK --render
 
 `reference.py` matches PDF pages to the visible slides by title and text and reports `match: ok` or `mismatch` (a PDF older or newer than the .pptx shows as missing or extra pages). Then:
 - `ok` → go on.
-- `mismatch` or no PDF → **ask the user to export a fresh PDF from PowerPoint** and give them the problem list. Only if they cannot or say "skip", make one with LibreOffice (`soffice --headless --convert-to pdf deck.pptx`, with a timeout; if a pptx skill with a `soffice.py` wrapper is installed, use that — bare soffice can hang) and note in the final report that the reference is a LibreOffice render.
+- `mismatch` or no PDF → **ask the user to export a fresh PDF from PowerPoint** and give them the problem list — also when the mismatch looks small (e.g. only a break slide is missing). Do not decide this yourself: the user knows which version is current, and an export takes them a minute. You may suggest "continue with the old PDF" as an option in the same question. Only if they cannot or say "skip", make one with LibreOffice (`soffice --headless --convert-to pdf deck.pptx`, with a timeout; if a pptx skill with a `soffice.py` wrapper is installed, use that — bare soffice can hang) and note in the final report that the reference is a LibreOffice render.
 
 Hidden slides are not in the PDF and not in `slides.json`; that is correct. Page numbers and slide numbers differ, so always go through `reference.json`.
 
