@@ -5,6 +5,8 @@ description: Convert PowerPoint (.pptx) lecture or talk decks into Slidev Markdo
 
 # PowerPoint → Slidev
 
+> **Status: beta (2026-10).** Used on 22 lecture decks (about 1500 slides, German and English, 4:3 → 16:9); a regression test with 25 known failures passes. Every real run so far still found a new kind of silent error, so look at the results yourself (contact sheets, click states) before you teach from them. Feedback welcome.
+
 Converting slides is easy; converting them so the author can teach from them without surprises is not. In real runs (WAST 14 decks, ML/DL 8 decks) the failures that mattered were silent: answers visible because click animations or cover boxes were lost, private browser tabs visible because a PowerPoint crop was ignored, formula lines cut off inside a column, slides swallowed by the parser, provenance comments shown as speaker notes, fixer agents shortening text or reporting fixes they had not made. Every deck still came out as "SHIP" from its reviewer — the errors were found by measurable checks and by the main agent looking itself. So this skill is built on: the PowerPoint file and a reference PDF as ground truth, scripts that measure, a fresh reviewer, and spot checks by the main agent.
 
 Read `references/pitfalls.md` before converting; give it to every converter and fixer.
@@ -20,7 +22,7 @@ Collect these from the request, the project (README section "Slidev conversion",
 5. **Reference PDFs** (Phase 1). Check all decks at once and ask the user once.
 6. **Effort** (user may override): `quick` = one pass + one check round; `normal` = up to 5 rounds (default); `thorough` = up to 10; or a number.
 7. **Agents**: the user says how many ("four agents"). If not said and there is more than one deck, ask. One agent per deck (see Orchestration).
-8. **Project settings**: a README section "Slidev conversion" records style, ratio, slide classes, `--ignore` selectors for the overflow checker (e.g. `--ignore=.htwg-cover`), image folders, reference PDF location, `vite.config.ts` needs. If missing, write it at the end of the run.
+8. **Project settings**: a README section "Slidev conversion" records style, ratio, slide classes, `--ignore` selectors for the overflow checker (e.g. `--ignore=.my-cover`), image folders, reference PDF location, `vite.config.ts` needs. If missing, write it at the end of the run.
 9. **Image folders**: `public/<deck>/` and, for images that are not free, `public/_intern/<deck>/`.
 
 ## Phase 1: extract and check the reference

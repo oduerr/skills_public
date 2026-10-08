@@ -9,7 +9,7 @@ Skills are self-contained directories with a `SKILL.md` that tells the agent wha
 | Skill | Description |
 |-------|-------------|
 | [easy_chef](./easy_chef/) | Transforms any recipe into a structured, easy-to-follow format with emoji-numbered ingredients, mise en place notes, metric units, and a Samin Nosrat culinary critique |
-| [pptx2slidev](./skills/pptx2slidev/) | Converts PowerPoint decks to Slidev with a check loop against a reference PDF (page matching, lost-words check, side-by-side compare images, fresh reviewer) and image provenance records |
+| [pptx2slidev](./skills/pptx2slidev/) | **Beta.** Converts PowerPoint decks to Slidev with a check loop against a reference PDF (page matching, lost-words check, side-by-side compare images, fresh reviewer) and image provenance records |
 
 ## Installation
 
