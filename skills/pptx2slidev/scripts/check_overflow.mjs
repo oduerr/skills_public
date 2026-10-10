@@ -2,7 +2,7 @@
 //   node check_overflow.mjs <deck>.md [port] [--ignore=.sel1,.sel2]
 // --ignore: CSS selectors of decorative elements that may cross the edge
 // (e.g. a custom cover layout), skipped in the overflow test.
-// Starts its OWN private dev server (localhost only, random port; never the user's
+// Starts its OWN private dev server (localhost only, random free port in 4000–4999; never the user's
 // running server: Slidev syncs navigation, so screenshots there move the
 // user's slides), visits every slide with all clicks shown and prints one line
 // per problem: "slide N: <kind> <detail>".
@@ -17,6 +17,7 @@
 // Slidev and playwright-chromium are taken from $SLIDEV_RUNTIME, the deck's
 // node_modules, or ~/.local/share/slidev-runtime.
 import { spawn } from 'node:child_process'
+import { connect } from 'node:net'
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -31,7 +32,14 @@ const SLIDEV = `${RUNTIME}/node_modules/.bin/slidev`
 
 const IGNORE = (process.argv.find(a => a.startsWith('--ignore=')) || '--ignore=').slice(9).split(',').filter(Boolean)
 const portArg = process.argv.slice(3).find(a => /^\d+$/.test(a))
-const port = portArg || String(3100 + Math.floor(Math.random() * 800))
+// Default: a random FREE port in 4000–4999. Never 3100–3899: live talks run there, and
+// screenshots on a running talk move its slides (Slidev syncs navigation).
+// in use = something answers on localhost (IPv4 or IPv6); a running talk may listen on either
+const answers = (p, host) => new Promise(ok => { const c = connect({ port: Number(p), host }).once('connect', () => { c.destroy(); ok(true) }).once('error', () => ok(false)); setTimeout(() => { c.destroy(); ok(false) }, 1000) })
+const isFree = async p => !(await answers(p, '127.0.0.1')) && !(await answers(p, '::1'))
+let port = portArg
+if (!port) for (let i = 0; i < 50 && !port; i++) { const p = String(4000 + Math.floor(Math.random() * 1000)); if (await isFree(p)) port = p }
+if (!port || Number(port) >= 3100 && Number(port) <= 3899 || !(await isFree(port))) { console.error(`port ${port || '?'} is in use; pass a free port (not 3100–3899)`); process.exit(2) }
 const server = spawn(SLIDEV, [deck, '--port', port], { stdio: 'pipe', cwd: dirname(deck) })
 
 async function waitForServer() {
