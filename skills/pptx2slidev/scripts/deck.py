@@ -35,7 +35,8 @@ def _split(lines):
         while j < n and lines[j].strip() != "---":
             block.append(lines[j])
             j += 1
-        if j < n and block and all(YAML_LINE.match(l) or l.startswith((" ", "\t")) or not l.strip() for l in block) \
+        # YAML comment lines (`# …`) are allowed inside frontmatter
+        if j < n and block and all(YAML_LINE.match(l) or l.startswith((" ", "\t", "#")) or not l.strip() for l in block) \
                 and any(YAML_LINE.match(l) for l in block):
             return block, j + 1
         return None, k
@@ -90,7 +91,9 @@ def read_deck(path, _depth=0):
         title = next((re.sub(r"^#+\s*", "", l).strip() for l in body if re.match(r"^#\s", l)), "")
         out.append({
             "file": str(path), "line": start, "fm": d, "body": text,
-            "hidden": d.get("hide", d.get("hidden", "")).lower() == "true",
+            # not exported: hide/hidden, presenter-addon intern slides and blank drawing pages
+            "hidden": d.get("hide", d.get("hidden", "")).lower() == "true"
+                      or d.get("intern", "").lower() == "true" or "blank" in d,
             "pin": int(pin.group(1)) if pin and pin.group(1) else None,
             "crop": (pin.group(2) or False) if pin else False,   # "crop" (whole slide) or "partial"
             "no_ref": bool(pin and pin.group(3)),                 # new slide without reference page
