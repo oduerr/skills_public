@@ -91,9 +91,9 @@ def read_deck(path, _depth=0):
         title = next((re.sub(r"^#+\s*", "", l).strip() for l in body if re.match(r"^#\s", l)), "")
         out.append({
             "file": str(path), "line": start, "fm": d, "body": text,
-            # not exported: hide/hidden, presenter-addon intern slides and blank drawing pages
+            # not exported: hide/hidden, the presenter addon's intern and skip slides, blank drawing pages
             "hidden": d.get("hide", d.get("hidden", "")).lower() == "true"
-                      or d.get("intern", "").lower() == "true" or "blank" in d,
+                      or d.get("intern", "").lower() == "true" or d.get("skip", "").lower() == "true" or "blank" in d,
             "pin": int(pin.group(1)) if pin and pin.group(1) else None,
             "crop": (pin.group(2) or False) if pin else False,   # "crop" (whole slide) or "partial"
             "no_ref": bool(pin and pin.group(3)),                 # new slide without reference page
