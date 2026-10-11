@@ -1,6 +1,6 @@
 ---
 name: pptx2slidev
-description: Convert PowerPoint (.pptx) lecture or talk decks into Slidev Markdown decks that look like the original, with a check loop against a reference PDF (page matching, lost-words check, click steps, cropped pictures, side-by-side compare images, fresh reviewer) and image provenance records; also re-checks decks that were converted earlier. Use this skill whenever the user wants to move slides from PowerPoint to Slidev, convert or port a .pptx (or "this week's lecture", "the remaining decks") to Markdown slides, re-check or polish an earlier PPTX→Slidev conversion, or compare a Slidev deck with the old PowerPoint PDF — even if they do not say "Slidev" but the project already uses it.
+description: Convert PowerPoint (.pptx) decks into Slidev Markdown that looks like the original, checked against a reference PDF (click steps, crops, lost words, compare images, fresh reviewer) with image provenance; also re-checks earlier conversions. Use when the user wants a .pptx (or "this week's lecture") as Slidev or Markdown slides, or wants a converted deck compared with the PowerPoint PDF.
 ---
 
 # PowerPoint → Slidev
@@ -9,7 +9,7 @@ description: Convert PowerPoint (.pptx) lecture or talk decks into Slidev Markdo
 
 Converting slides is easy; converting them so the author can teach from them without surprises is not. In real runs (WAST 14 decks, ML/DL 8 decks) the failures that mattered were silent: answers visible because click animations or cover boxes were lost, private browser tabs visible because a PowerPoint crop was ignored, formula lines cut off inside a column, slides swallowed by the parser, provenance comments shown as speaker notes, fixer agents shortening text or reporting fixes they had not made. Every deck still came out as "SHIP" from its reviewer — the errors were found by measurable checks and by the main agent looking itself. So this skill is built on: the PowerPoint file and a reference PDF as ground truth, scripts that measure, a fresh reviewer, and spot checks by the main agent.
 
-Read `references/pitfalls.md` before converting; give it to every converter and fixer.
+Read `references/pitfalls.md` before converting; give it to every converter and fixer. For what Slidev offers (built-in layouts, `v-click`, Monaco, KaTeX, Mermaid, frontmatter keys) use the official skill `slidev` (`npx skills add slidevjs/slidev`): built-in features before hand-made divs. Its project setup does not apply when the project already has decks.
 
 ## Phase 0: settle the setup (ask before building anything)
 
